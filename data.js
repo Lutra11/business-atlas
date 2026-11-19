@@ -1,0 +1,726 @@
+/* ============================================================
+ * 科研管理业务全景 — 业务数据（PRD 一期 v1.0）
+ * ------------------------------------------------------------
+ * 数据来源：《科研项目管理PRD》第一部分：项目立项和项目库（一期需求）
+ * 界面代码（app.js）不含任何业务内容，全部业务数据在本文件维护：
+ *   domains      业务领域（页面顶部「业务范围」筛选）
+ *   roles        角色（角色流转页的泳道列）
+ *   scenarios    工作场景（业务场景页）
+ *   capabilities 业务能力（对应 PRD 的功能项；fr 字段填需求编号后，
+ *                「产品视角」下会显示 FR 徽标）
+ *   flows        流程主线（角色流转页与执行流程页）
+ *                steps[].role  → 泳道列 / 节点颜色
+ *                edges[].kind  → main 主流转 / auto 系统自动 / return 退回·催办
+ * ------------------------------------------------------------
+ * 组织口径：一个 FR = 一条业务流程（主线），见 flows 数组。
+ * ============================================================ */
+window.BIZ = {
+
+  meta: {
+    title: '科研管理业务全景',
+    subtitle: '项目立项与项目库 · 业务流转图谱',
+    version: 'PRD 一期 v1.0 · 2026-11-19',
+    note: '依据《科研项目管理PRD》第一部分（项目立项和项目库一期需求）整理；FR-01～FR-18 全量映射',
+  },
+
+  /* ---------------- 业务领域 ---------------- */
+  domains: [
+    { id: 'D_pish', title: '院内项目申报与立项',
+      summary: '批次发布 → 申报 → 形式审查 → 评委指派 → 专家评审（初审） → 学部推荐 → 合议与复审 → 终审入库的全链路（FR-01～FR-09）。',
+      outcome: '本批次立项结果、项目编号与项目库条目',
+      scenarioIds: ['S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10', 'S11'] },
+    { id: 'D_ext', title: '外部项目登记',
+      summary: '未在院内立项流程产生的横向 / 纵向 / 联合实验室项目，负责人登记 → 四级审批链（子方向负责人→学部负责人→科研财务→管理办负责人） → 入库直通在研（FR-15）。',
+      outcome: '外部项目入库（在研）与到款确认记录',
+      scenarioIds: ['S12', 'S13'] },
+    { id: 'D_tplt', title: '模板与规则配置',
+      summary: 'PMO 维护流程模板（FR-10）、申报表单模板（FR-11）、评审表模板（FR-16）与外部项目登记类别配置，按项目类型/批次绑定生效，版本快照与在途隔离。',
+      outcome: '各类可发布模板与类别配置',
+      scenarioIds: ['S14', 'S15', 'S16', 'S17', 'S24'] },
+    { id: 'D_reg', title: '外部用户注册',
+      summary: 'PMO 生成注册链接（携带身份参数），外部人员注册账户（手机号唯一、邮箱验证），外部评审资质经 PMO 审核后入专家库（FR-17）。',
+      outcome: '外部账户与专家库外部评委',
+      scenarioIds: ['S18'] },
+    { id: 'D_center', title: '项目中心与启动',
+      summary: '立项/外部入库后自动生成项目库条目并授权；启动规则配置与条件启动判定（FR-12）自动转启动并通知下拨；项目全生命周期查看/维护/终止（FR-14）。',
+      outcome: '项目库（待启动/启动/在研/已中止/已结题）与全程变更留痕',
+      scenarioIds: ['S19', 'S20', 'S21', 'S22'] },
+    { id: 'D_mon', title: '过程监控与审计',
+      summary: '申报/评审/全过程监控视图（管理办全院、学部本学部）与 Excel/PDF 审计导出（FR-18）。',
+      outcome: '监控视图、待办清单与审计导出件',
+      scenarioIds: ['S23'] },
+  ],
+
+  /* ---------------- 角色 ---------------- */
+  roles: [
+    { id: 'R_pi', name: '申请人（院内/外部）', org: '院内职工 / 外部合作人员',
+      duties: ['接收立项通知、在线填报项目申报书（FR-02）', '外部项目登记（FR-15，仅院内申请人）', '参与项目启动、项目中心查看与维护（FR-12/FR-14）'] },
+    { id: 'R_zbfzr', name: '子方向负责人', org: '各学部 · 子方向',
+      duties: ['外部项目登记第一级审批：归口业务把关（FR-15）'] },
+    { id: 'R_xzfhzr', name: '学部负责人', org: '各学部',
+      duties: ['评委指派审核确认（FR-04）', '学部推荐审核确认、入选名单审批（FR-06/FR-07）', '复审报告修改确认（FR-08/09）', '外部项目登记第二级审批（FR-15）', '本学部过程监控（FR-18）'] },
+    { id: 'R_xzl', name: '学部助理', org: '各学部',
+      duties: ['评委指派与改派催办、评委组拟定（FR-04）', '推荐整理与提交（FR-06）', '修改核对（FR-09）', '本学部评审明细查看（FR-18）'] },
+    { id: 'R_pmo', name: 'PMO', org: '科研部',
+      duties: ['立项指南发布（FR-01）与形式审查（FR-03）', '模板配置：流程/表单/评审表（FR-10/11/16）', '复审轮指派与改派催办（FR-04）', '合议与入选确认（FR-07）', '启动规则配置与强制启动（FR-12）', '流程干预（FR-13）', '项目中心维护（FR-14）', '外部项目登记配置（FR-15）', '过程监控（FR-18）'] },
+    { id: 'R_mgb', name: '管理办负责人', org: '科研管理办公室',
+      duties: ['立项指南审批、形式审查结果审批（FR-01/FR-03）', '复审轮指派审批（FR-04）', '管理办终审（FR-08）', '全院过程监控（FR-18）', '外部项目登记入库前终审（FR-15）'] },
+    { id: 'R_exp', name: '评审专家（院内/院外）', org: '专家库：院内研究员/兼职导师/外部评委',
+      duties: ['受邀参加初审/复审轮专家评审（FR-05）：四维度打分＋意见', '复审轮评修改后申报书＋PPT（FR-05）'] },
+    { id: 'R_fin', name: '科研财务', org: '科研部 · 科研财务',
+      duties: ['外部项目经费复核（FR-15 审批链第三级）', '启动后经费下拨（FR-12）', '外部项目到款确认（FR-15）'] },
+    { id: 'R_sys', name: '系统自动', org: '—',
+      duties: ['机器校验/AI 辅助审查（FR-03）', '评审任务派发与催办提醒（FR-04）', '评审报告自动汇总（FR-05）', '立项入库与编号生成（FR-09）', '条件启动判定（FR-12）', '过程监控实时统计（FR-18）'] },
+  ],
+
+  /* ---------------- 场景 ---------------- */
+  scenarios: [
+    { id: 'S01', domain: 'D_pish', title: '立项指南发布与批次发起',
+      audience: 'PMO → 管理办负责人 → 目标群体', outcome: '已发布批次（钉钉+邮件推送）与进度计划',
+      summary: 'PMO 发起立项批次（名称/类别/窗口/预算方式/绑定流程+表单模板/指南附件/目标群体/限报规则/进度计划），管理办负责人审批通过后正式发布；退回由 PMO 修改重报；到点自动截止。',
+      capabilities: ['C_f01a', 'C_f01b', 'C_f01c'] },
+    { id: 'S02', domain: 'D_pish', title: '项目申报',
+      audience: '申请人（院内/外部）', outcome: '立项单据（审批中）与申报附件',
+      summary: '申请人在已发布批次内在线填写申报书或上传 Word 自动解析回填，成员/预算/承诺书等全量校验后提交生成单据，流转 PMO 形式审查；外部申请人经注册账户从对外门户申报。',
+      capabilities: ['C_f02a', 'C_f02b', 'C_f02c'] },
+    { id: 'S03', domain: 'D_pish', title: '形式审查',
+      audience: 'PMO → 管理办负责人', outcome: '分学部形式审查报告',
+      summary: '机器校验＋AI 辅助审查（范围识别/相似比对/缺失检查/子方向归属匹配/载荷超项联动）自动填充，PMO 复核给出通过/终止，管理办负责人审批后按学部生成报告推送学部；不通过项目本批次出局。',
+      capabilities: ['C_f03a', 'C_f03b', 'C_f03c'] },
+    { id: 'S04', domain: 'D_pish', title: '评委指派（初审轮）',
+      audience: '学部助理/学部负责人 → 评审专家', outcome: '生效的评委名单与评审任务',
+      summary: '形审通过后学部核对/调整项目所属子方向，学部助理逐单/评委组批量指派（≥3人、回避校验灰显），学部负责人审批生效后系统派发任务（申报书带水印）；支持催办与改派（原意见作废存档、权限回收）；管理办/学部可实时查看评审进度与得分。',
+      capabilities: ['C_f04a', 'C_f04b', 'C_f04d', 'C_f04e', 'C_f04f'] },
+    { id: 'S05', domain: 'D_pish',   title: '专家评审（初审轮）',
+      audience: '评审专家', outcome: '四维度评分＋意见（背靠背）',
+      summary: '专家从待办进入评审表，确认保密要求后按四维度（选题和科学价值/研究内容与方案/可行性论证/学生培养与成果转化）打 A/B/C 档＋每维意见＋综合意见；提交后锁定、评审期内背靠背互不可见；在线预览申报书与附件。',
+      capabilities: ['C_f05a', 'C_f05b', 'C_f05c'] },
+    { id: 'S06', domain: 'D_pish', title: '复审轮（指派+评审）',
+      audience: 'PMO → 管理办负责人 → 评审专家', outcome: '复审评分与复审报告',
+      summary: '入选项目修改后（申报书+汇报PPT），PMO 指派复审评委（管理办负责人审批生效）→ 评委在线评修改后申报书＋PPT（评审流程同 FR-04/05，独立页签、独立截止时间、独立评审表模板）。',
+      capabilities: ['C_f04c', 'C_f05d'] },
+    { id: 'S07', domain: 'D_pish', title: '学部确认推荐立项',
+      audience: '学部助理 → 学部负责人', outcome: '学部推荐立项清单与学部推荐报告',
+      summary: '学部批量查看评审汇总，逐单确认推荐/不推荐＋项目评语＋战略相关标记（阈值校验提示不拦截），学部评语统一出具；助理整理提交→负责人审核生效（亲办即生效）；不推荐即终止并告知申请人。',
+      capabilities: ['C_f06a', 'C_f06b'] },
+    { id: 'S08', domain: 'D_pish', title: '合议与入选确认',
+      audience: 'PMO + 学部负责人', outcome: '合议后入选名单（复审输入）',
+      summary: 'PMO 汇总各学部推荐名单组织线下合议（抄送管理办负责人），合议结果在系统更新名单（增补/删减理由留痕），按学部推送学部负责人审批本学部入选名单。',
+      capabilities: ['C_f07a'] },
+    { id: 'S09', domain: 'D_pish', title: '管理办终审与立项入库',
+      audience: '管理办负责人 → 系统自动', outcome: '本批次立项结果与项目库条目（待启动）',
+      summary: '复审报告经学部负责人审批后，管理办负责人终审：通过（整体或逐项）→ 系统自动立项入库、生成项目编号（类型码+年月+序号）、项目置「待启动」、启动学生招募；终止则终局出局。',
+      capabilities: ['C_f08a', 'C_f09a'] },
+    { id: 'S10', domain: 'D_pish', title: 'PMO 代录补录',
+      audience: 'PMO → 申请人', outcome: '代录单据（标记代录、留痕）',
+      summary: '批次截止后 PMO 可在批次详情对指定批次执行补录代录（标记「PMO 代录」并留痕操作人与时间）；代录后推送钉钉确认待办给申请人（含承诺书确认），确认完成前该单据不得通过形式审查。',
+      capabilities: ['C_f01a'] },
+    { id: 'S11', domain: 'D_pish', title: '项目状态与流转',
+      audience: '系统自动', outcome: '申请态（草稿/审批中/已终止）与库态（待启动/启动/在研/已中止/已结题）',
+      summary: '申请单据态：草稿→审批中→已终止（表2a）；项目库态：入库待启动→（条件满足）启动→经费下拨在研→已中止/已结题（表2b）；外部导入项目不经待启动直接在研。',
+      capabilities: ['C_state'] },
+    { id: 'S12', domain: 'D_ext', title: '外部项目登记与审批',
+      audience: '登记人（项目负责人）→ 子方向负责人 → 学部负责人 → 科研财务 → 管理办负责人', outcome: '外部项目入库（在研）',
+      summary: '横向/纵向/联合实验室项目常年开放登记（不挂批次、不设窗口、不形审不评审），登记表单全量校验后按默认四级审批链流转；通过后入库直通「在研」、立项来源标注「外部导入」；终止则终态。',
+      capabilities: ['C_f15a', 'C_f15b'] },
+    { id: 'S13', domain: 'D_ext', title: '到款确认',
+      audience: '科研财务', outcome: '逐笔到款确认记录（经费执行统计口径）',
+      summary: '学院账户管理的外部项目在研期间，科研财务按分年度到款计划逐笔确认到款（留痕、计入经费执行统计）；不构成审批节点、不影响项目状态；委托单位直接管理项目无此操作。',
+      capabilities: ['C_f15c'] },
+    { id: 'S14', domain: 'D_tplt', title: '流程模板配置',
+      audience: 'PMO', outcome: '流程模板（版本化）',
+      summary: 'PMO 从节点类型库选取/编排节点、配置条件网关（预算方式/金额区间/是否跨学部/项目类型/评审均分区间）与角色解析规则；入库终态节点固定末端不可删；版本快照：项目提交时按当时版本生成流程实例，模板后续修改不影响在途。',
+      capabilities: ['C_f10a'] },
+    { id: 'S15', domain: 'D_tplt', title: '申报表单模板配置',
+      audience: 'PMO', outcome: '申报表单模板（版本化）',
+      summary: '基础字段集（项目名称/负责人/类别/预算方案/立项依据与预期成果）固定不可删、仅可调序与说明；扩展字段八类自由增删；批次发布时锁定版本；有草稿/在途单据的批次不可换绑。',
+      capabilities: ['C_f11a'] },
+    { id: 'S16', domain: 'D_tplt', title: '评审表模板配置',
+      audience: 'PMO', outcome: '评审表模板（版本化）',
+      summary: '预置系统默认四维度（可增删调序）、档位与分值区间、档位细化标准文案、意见字段配置与计分规则；发布校验分值区间连续不重不漏；按批次＋评审轮次绑定、同轮全项目统一锁定版本。',
+      capabilities: ['C_f16a'] },
+    { id: 'S17', domain: 'D_tplt', title: '外部项目登记配置',
+      audience: 'PMO', outcome: '开放登记的类别字典',
+      summary: 'PMO 维护科研项目类别字典中开放外部登记的类别（预置横向/纵向/联合实验室），停用后不可发起新登记、在途单据照常流转。',
+      capabilities: ['C_f15d'] },
+    { id: 'S24', domain: 'D_tplt', title: '流程干预与干预历史',
+      audience: 'PMO（管理办负责人审批）', outcome: '单据回退到已过节点、干预记录全留痕',
+      summary: 'PMO 对审批中单据执行流程干预（回退到已过节点、原因必填、通知前后环节相关人），目标节点后的结论作废留痕；干预历史可按批次、节点与操作类型查询；终态单据（已入库/已终止）不可干预。',
+      capabilities: ['C_f13a'] },
+    { id: 'S18', domain: 'D_reg', title: '外部用户注册与审核',
+      audience: '外部人员 → PMO', outcome: '外部账户（外部申请人/外部评审，可兼任）',
+      summary: 'PMO 生成携带身份参数的注册链接（默认 30 天有效）经邮箱发送；注册字段统一（姓名/手机号唯一/邮箱/单位/职务职称/学历学位/研究领域等），身份可叠加兼任；外部评审经 PMO 审核后入专家库；登录以验证码为主，密码可选。',
+      capabilities: ['C_f17a', 'C_f17b'] },
+    { id: 'S19', domain: 'D_center', title: '项目自动入库与授权',
+      audience: '系统自动 → 项目负责人/PM/部门负责人', outcome: '项目库条目与权限分配、首条变更记录',
+      summary: '立项终审通过后系统自动读取立项单全量数据、按编号规则生成唯一项目编号写入项目库，自动分配查看与维护权限，生成第一条变更记录。',
+      capabilities: ['C_f14a'] },
+    { id: 'S20', domain: 'D_center', title: '项目查看与维护',
+      audience: '授权角色（项目负责人/PM/部门负责人）', outcome: '项目详情各 Tab 与逐条变更留痕',
+      summary: '项目中心按名称/编号/类型/学部/状态筛选；详情 Tab：基本信息、组织与负责人、项目成员、季度推进会、科研成果、梧桐杯加速、变更记录；编辑分 Tab 维护、保存自动生成变更记录（类型/操作人/说明/时间）。',
+      capabilities: ['C_f14b'] },
+    { id: 'S21', domain: 'D_center', title: '项目终止',
+      audience: '授权角色', outcome: '已中止项目（编辑锁定、仅查看）',
+      summary: '项目列表点终止→填写终止时间与原因→状态自动置「已中止」；系统锁定大部分编辑项、仅保留查看权限，并自动写入变更记录。',
+      capabilities: ['C_f14c'] },
+    { id: 'S22', domain: 'D_center', title: '启动规则与条件启动',
+      audience: 'PMO / 科研财务 / 项目负责人', outcome: '项目自动启动与下拨通知',
+      summary: '每类项目一条启动规则（条件项 AND 组合，默认主项目学生人数≥3），条件实时判定＋每日兜底扫描，全达成自动转「启动」并通知科研财务下拨与项目负责人；PMO 可强制启动（原因必填留痕）；「启动」为单向状态不回退。',
+      capabilities: ['C_f12a', 'C_f12b'] },
+    { id: 'S23', domain: 'D_mon', title: '过程监控与审计导出',
+      audience: '管理办（全院）/ 学部（本学部）', outcome: '监控视图、待办清单与审计导出件',
+      summary: '批次维度申请统计（累计提交/草稿/未提交/外部单数）与学部分布实时更新；评审过程监控期间即可查看逐单×逐专家评分；导出 Excel 全量＋PDF 带水印（导出人+时间），导出动作落审计日志。',
+      capabilities: ['C_f18a', 'C_f18b'] },
+  ],
+
+  /* ---------------- 能力（FR 粒度细分） ---------------- */
+  capabilities: [
+    /* FR-01 立项指南发布 */
+    { id: 'C_f01a', title: '发起立项批次', role: 'R_pmo', fr: ['FR-01'], priority: 'P1',
+      status: '原型已交付', tab: '批次管理',
+      summary: '设定批次名称、科研项目类别、归属组织、预算方式、申报窗口、立项指南附件、目标群体、限报规则与进度计划配置；绑定流程模板与申报表单模板。' },
+    { id: 'C_f01b', title: '指南发布审批', role: 'R_mgb', fr: ['FR-01'], priority: 'P1',
+      status: '原型已交付', tab: '项目审批',
+      summary: 'PMO 发起批次后经管理办负责人审批：通过→正式发布并推送目标群体；退回→PMO 修改重报（重提由原审批人重审）。' },
+    { id: 'C_f01c', title: '申请人接收立项通知', role: 'R_pi', fr: ['FR-01'], priority: 'P1',
+      status: '原型已交付',
+      summary: '审批通过后系统通过钉钉+邮件推送立项通知，点击链接直达该批次申报页；非目标群体不可见批次与指南。' },
+
+    /* FR-02 申报项目 */
+    { id: 'C_f02a', title: '院内/外部申请人申报', role: 'R_pi', fr: ['FR-02'], priority: 'P1',
+      status: '原型已交付', tab: '立项申请',
+      summary: '院内申请人在已发布批次内在线填写申报书提交；外部申请人（不在组织架构内）注册账户后从对外门户申报，口径一致、系统自动标注申请人类型。' },
+    { id: 'C_f02b', title: '申报书填写与自动解析', role: 'R_pi', fr: ['FR-02'], priority: 'P2',
+      status: '原型已交付', tab: '立项申请',
+      summary: '支持手动填写与上传 Word/PDF 申报书自动解析回填（解析失败降级手工填报）；自动保存草稿、断线恢复。' },
+    { id: 'C_f02c', title: '上传申报附件', role: 'R_pi', fr: ['FR-02'], priority: 'P2',
+      status: '原型已交付',
+      summary: '支持上传 PPT/Word/PDF 等申报附件，支持评审在线浏览；提交校验必填、字数、成员行规则、承诺书勾选与预算合计一致。' },
+
+    /* FR-03 形式审查 */
+    { id: 'C_f03a', title: '自动形式审查（机器校验）', role: 'R_sys', fr: ['FR-03'], priority: 'P2',
+      status: '原型已交付',
+      summary: '系统自动联动项目库/组织架构/成员库，对限项、成员限制等执行自动校验并输出结果辅助 PMO 审查。' },
+    { id: 'C_f03b', title: 'AI 辅助审查', role: 'R_sys', fr: ['FR-03'], priority: 'P3',
+      status: 'PRD 新增·原型未实现',
+      summary: 'AI 范围识别、相似项目比对（仅提示不拦截）、重要信息缺失检查（可配）、子方向自动归属匹配、评审推荐、载荷超项联动预警。' },
+    { id: 'C_f03c', title: 'PMO 人工审查与形审报告', role: 'R_pmo', fr: ['FR-03'], priority: 'P1',
+      status: '原型已交付', tab: '形式审查',
+      summary: 'PMO 复核机器+AI 结果给出通过/终止、可批量通过；通过时按学部生成分学部形审报告，经管理办负责人审批后推送学部负责人与助理；支持流转说明与流转附件（后续环节可见、申报人不可见）。' },
+
+    /* FR-04 指定评委 */
+    { id: 'C_f04a', title: '核对、修改项目所属子方向', role: 'R_xzl', fr: ['FR-04'], priority: 'P1',
+      status: '原型已交付', tab: '指定子方向与评委',
+      summary: '形审通过后学部可结合研究内容调整项目所属子方向（申报阶段自选仅初始归属，不回传申报人）；调整后作为评委指派、分组评审与初审报告归属依据。' },
+    { id: 'C_f04b', title: '指派评委（初审轮）', role: 'R_xzl', fr: ['FR-04'], priority: 'P1',
+      status: '原型已交付', tab: '指定子方向与评委',
+      summary: '学部助理逐单指派或新建评委组（≥3人）批量指派；系统自动校验回避（负责人/联合负责人标灰）与人数限制；AI 可基于研究方向匹配推荐候选评委；学部负责人审批生效。' },
+    { id: 'C_f04c', title: '指派评委（复审轮）', role: 'R_pmo', fr: ['FR-04'], priority: 'P1',
+      status: '原型已交付', tab: '指定子方向与评委',
+      summary: '复审轮由 PMO 指派评委，管理办负责人审批后生效派发；学部对本轮页签只读。' },
+    { id: 'C_f04d', title: '催办与改派', role: 'R_xzl', fr: ['FR-04'], priority: 'P1',
+      status: '原型已交付', tab: '指定子方向与评委',
+      summary: '临期/逾期自动催办（钉钉+邮件，四级节奏）并提醒指派人；无法履职可改派：原评委已提交意见作废存档、权限与查看入口关闭，新评委自动赋权，重新校验回避与人数，截止时间重算。' },
+    { id: 'C_f04e', title: '评审监控（指派过程）', role: 'R_xzl', fr: ['FR-04'], priority: 'P2',
+      status: '原型已交付', tab: '指定子方向与评委',
+      summary: '管理办、学部按权责范围查看各项目评审进度及得分，实时展示每位评委评审状态（待接收/评审中/已提交）。' },
+    { id: 'C_f04f', title: '通知评委', role: 'R_sys', fr: ['FR-04'], priority: 'P1',
+      status: '原型已交付',
+      summary: '指派/改派生效后系统自动通过钉钉+邮箱/门户消息发送评审邀请（项目、任务、截止时间），评委可从通知直达评审任务。' },
+
+    /* FR-05 专家评审打分 */
+    { id: 'C_f05a', title: '专家评审打分', role: 'R_exp', fr: ['FR-05'], priority: 'P1',
+      status: '原型已交付', tab: '我的评审任务',
+      summary: '四维度打 A/B/C 档＋每维评审意见＋综合意见；提交后锁定，评审期内背靠背互不可见；窗口期内可修改。' },
+    { id: 'C_f05b', title: '在线浏览附件与PPT', role: 'R_exp', fr: ['FR-05'], priority: 'P1',
+      status: '原型已交付', tab: '我的评审任务',
+      summary: '评委在线查看申报附件；复审轮可在线翻页预览汇报 PPT（免下载，水印规则同申报书）。' },
+    { id: 'C_f05c', title: '评审报告与Z分数汇总', role: 'R_sys', fr: ['FR-05'], priority: 'P1',
+      status: '原型已交付',
+      summary: '评选结束系统自动汇总各项目评分与意见，生成评审报告（评委评分、意见、均分及排名）；初审按学部计算标准化得分 Z=(x−μ)/σ 用于跨子方向/评委组比较。' },
+    { id: 'C_f05d', title: '复审轮评审', role: 'R_exp', fr: ['FR-05'], priority: 'P1',
+      status: '原型已交付', tab: '我的评审任务',
+      summary: '复审（终审）轮评修改后申报书＋PPT，流程同初审（独立页签/截止/评审表模板）。' },
+
+    /* FR-06 学部确认推荐立项 */
+    { id: 'C_f06a', title: '学部确认推荐', role: 'R_xzfhzr', fr: ['FR-06'], priority: 'P1',
+      status: '原型已交付', tab: '确认推荐',
+      summary: '批量列表查看评审汇总，逐单确认推荐/不推荐＋项目评语＋战略相关标记（占比阈值提示不拦截）；学部评语统一出具；不推荐即终止并告知申请人。' },
+    { id: 'C_f06b', title: '推荐报告生成与审核', role: 'R_xzfhzr', fr: ['FR-06'], priority: 'P1',
+      status: '原型已交付', tab: '确认推荐',
+      summary: '助理整理提交→负责人审核（同意生效/退回注明原因重提，亲办即生效）；生效即学部推荐报告定版，随名单流转 PMO 合议。' },
+
+    /* FR-07 合议与入选确认 */
+    { id: 'C_f07a', title: '合议与入选确认', role: 'R_pmo', fr: ['FR-07'], priority: 'P1',
+      status: '原型已交付', tab: '合议与入选确认',
+      summary: 'PMO 汇总各学部推荐名单组织线下合议（抄送管理办负责人），合议结果更新报告（增补/删减理由留痕），按学部推送学部负责人审批入选名单；通过后转入复审流程。' },
+
+    /* FR-08/09 管理办终审与立项入库 */
+    { id: 'C_f08a', title: '管理办终审', role: 'R_mgb', fr: ['FR-08'], priority: 'P1',
+      status: '原型已交付', tab: '项目审批',
+      summary: '对复审报告终审：通过（整体或个别终止）→立项；终止（意见必填）→终局出局；通过后系统自动锁定评审记录并生成立项清单存档。' },
+    { id: 'C_f09a', title: '立项入库', role: 'R_sys', fr: ['FR-09'], priority: 'P1',
+      status: '原型已交付',
+      summary: '终审通过后系统生成立项条目写入项目库、按规则生成项目编号（类型码+年月+序号，全局唯一）、项目置「待启动」、开始学生招募与启动条件判定。' },
+
+    /* FR-10/11/16 模板配置 */
+    { id: 'C_f10a', title: '流程模板配置', role: 'R_pmo', fr: ['FR-10'], priority: 'P2',
+      status: '原型已交付', tab: '流程配置',
+      summary: '从节点类型库编排节点序列与条件网关、配置节点角色规则（岗位/关系/指定/上一节点指定）；入库终态固定末端；版本快照、在途单据不受后续版本影响。' },
+    { id: 'C_f11a', title: '申报表单模板配置', role: 'R_pmo', fr: ['FR-11'], priority: 'P2',
+      status: '原型已交付', tab: '表单配置',
+      summary: '基础字段集固定不可删（仅调序/说明），扩展字段八类（文本/数值/日期/单选/人员/组织/附件/富文本）自由增删；批次发布锁定版本；换绑限制：有草稿/在途单据不可换绑。' },
+    { id: 'C_f16a', title: '评审表模板配置', role: 'R_pmo', fr: ['FR-16'], priority: 'P2',
+      status: '原型已交付', tab: '评审表模板',
+      summary: '预置默认四维度（可增删调序），档位/分值区间/细化标准/意见字段/计分规则可配；发布校验区间连续不重不漏；按批次+轮次绑定锁定版本。' },
+
+    /* FR-12 项目启动 */
+    { id: 'C_f12a', title: '启动规则配置', role: 'R_pmo', fr: ['FR-12'], priority: 'P2',
+      status: '原型已交付', tab: '启动规则配置',
+      summary: '每类项目一条启动规则，从预置条件项库（主项目学生人数≥N/经费到账确认/项目书修改/固定日期）选条件 AND 组合并设阈值；在库项目按入库时规则快照判定。' },
+    { id: 'C_f12b', title: '按条件启动项目', role: 'R_sys', fr: ['FR-12'], priority: 'P2',
+      status: '原型已交付',
+      summary: '条件相关数据变化实时判定＋每日定时兜底扫描；全达成自动转「启动」、通知科研财务下拨（站内信+钉钉+邮件）与项目负责人；PMO 可强制启动（原因必填留痕）；启动单向不回退。' },
+
+    /* FR-13 流程干预 */
+    { id: 'C_f13a', title: 'PMO 流程干预', role: 'R_pmo', fr: ['FR-13'], priority: 'P2',
+      status: 'PRD 新增·原型未实现', tab: '流程干预',
+      summary: '对审批中单据回退到已过节点（目标节点仅可选已流转节点、原因必填、全量留痕，通知前后环节相关人）；已入库/已终止终态单据不可干预；权限不可下放。' },
+
+    /* FR-14 项目中心 */
+    { id: 'C_f14a', title: '项目自动入库与授权', role: 'R_sys', fr: ['FR-14'], priority: 'P1',
+      status: '原型已交付', tab: '项目库',
+      summary: '立项通过后自动写入项目库、生成唯一编号、自动分配项目负责人/PM/部门负责人查看维护权限，生成首条变更记录。' },
+    { id: 'C_f14b', title: '项目查看与维护', role: 'R_pi', fr: ['FR-14'], priority: 'P1',
+      status: '原型已交付', tab: '项目库',
+      summary: '按条件筛选与详情各 Tab（基本信息/组织与负责人/项目成员/季度推进会/科研成果/梧桐杯加速/变更记录）；编辑分 Tab 维护、保存自动生成变更记录；越权项目不可见。' },
+    { id: 'C_f14c', title: '项目终止', role: 'R_pi', fr: ['FR-14'], priority: 'P1',
+      status: '原型已交付', tab: '项目库',
+      summary: '填写终止时间与原因，状态置「已中止」；编辑项锁定仅保留查看，变更记录写入。' },
+
+    /* FR-15 外部项目登记 */
+    { id: 'C_f15a', title: '外部项目登记', role: 'R_pi', fr: ['FR-15'], priority: 'P1',
+      status: '原型已交付', tab: '外部项目登记',
+      summary: '横向/纵向/联合实验室项目常年开放登记入口：在线填写项目书信息+上传佐证材料，提交按审批链流转；不挂批次、不设窗口、不形审不评审。' },
+    { id: 'C_f15b', title: '外部项目审批链', role: 'R_zbfzr', fr: ['FR-15'], priority: 'P1',
+      status: '原型已交付', tab: '项目审批',
+      summary: '默认四级审批链：子方向负责人审批（归口业务把关）→学部负责人审批（复核归属）→科研财务审批（复核经费信息）→管理办负责人审批（入库前终审）；终止即终态（意见必填）。' },
+    { id: 'C_f15c', title: '到款确认', role: 'R_fin', fr: ['FR-15'], priority: 'P1',
+      status: '原型已交付', tab: '项目库',
+      summary: '学院账户管理的外部项目在研期间按分年度到款计划逐笔确认到款（留痕、计入经费执行统计）；不影响项目状态。' },
+    { id: 'C_f15d', title: '外部项目登记配置', role: 'R_pmo', fr: ['FR-15'], priority: 'P1',
+      status: '原型已交付', tab: '外部项目配置',
+      summary: '维护科研项目类别字典中开放外部登记的类别（预置横向/纵向/联合实验室）；停用后不可发起、在途照常。' },
+
+    /* FR-17 外部用户注册 */
+    { id: 'C_f17a', title: '注册入口', role: 'R_sys', fr: ['FR-17'], priority: 'P2',
+      status: 'PRD 新增·原型未实现',
+      summary: 'PMO 生成携带身份参数（外部申请人/外部评审）的注册链接经邮箱/短信发送；默认 30 天有效、到期失效；同一人经另一身份链接再注册时识别既有账户、身份叠加兼任。' },
+    { id: 'C_f17b', title: '外部用户登录与权限', role: 'R_pi', fr: ['FR-17'], priority: 'P2',
+      status: 'PRD 新增·原型未实现',
+      summary: '登录以验证码为主（手机号/邮箱接收，限发防刷），密码可选；外部申请人仅见本人单据、外部评审仅见被指派任务，内部菜单一律不可见；外部评审资质经 PMO 审核后入专家库。' },
+
+    /* FR-18 过程监控 */
+    { id: 'C_f18a', title: '申报/评审/全过程监控', role: 'R_sys', fr: ['FR-18'], priority: 'P2',
+      status: '原型已交付', tab: '过程监控',
+      summary: '批次维度申请统计与学部分布实时更新；评审期间即可查看逐单×逐专家评分意见（学部限本学部、管理办全院）；超时/临近截止自动标记汇总待办清单。' },
+    { id: 'C_f18b', title: '审计导出', role: 'R_pmo', fr: ['FR-18'], priority: 'P2',
+      status: '原型已交付',
+      summary: '导出申报明细与评审过程明细：Excel 全量字段＋PDF 带水印（导出人+时间）；导出权限：PMO/管理办负责人（全院）、学部负责人（本学部）；导出动作落审计日志。' },
+
+    /* 状态机 */
+    { id: 'C_state', title: '项目状态流转', role: 'R_sys', fr: ['FR-08/09/12/14/15'], priority: 'P1',
+      status: '原型已交付',
+      summary: '申请态：草稿→审批中→已终止；库态：入库即待启动→（条件达成）启动→经费下拨在研→已中止/已结题；外部导入不经待启动直接在研。' },
+  ],
+
+  /* ---------------- 流程主线：一个 FR 一条 ---------------- */
+  flows: [
+    /* ===== FR-01 立项指南发布 ===== */
+    { id: 'J_f01', domain: 'D_pish', title: 'FR-01 立项指南发布',
+      note: 'PMO 发起批次（含流程+表单模板绑定与进度计划）→ 管理办负责人审批 → 发布推送目标群体 → 申报窗口开放 → 到点自动截止。',
+      roleOrder: ['R_pmo', 'R_mgb', 'R_pi', 'R_sys'],
+      steps: [
+        { id: 'f01_draft', title: '发起立项批次', role: 'R_pmo', fr: ['FR-01'], action: 'PMO 从「项目立项→批次管理」新建批次，填写名称/类别/窗口/预算方式，绑定流程模板与申报表单模板，配置进度计划与限报规则，暂存草稿或直接提交。' },
+        { id: 'f01_appr', title: '指南发布审批', role: 'R_mgb', fr: ['FR-01'], action: '管理办负责人对立项指南执行通过/退回：通过后正式发布；退回由 PMO 修改重报，重提由原审批人重审。' },
+        { id: 'f01_pub', title: '批次发布通知', role: 'R_sys', fr: ['FR-01'], action: '审批通过后状态置「已发布」，系统通过站内信+钉钉+邮件向目标群体推送通知，链接直达该批次申报页。' },
+        { id: 'f01_recv', title: '申请人接收通知', role: 'R_pi', fr: ['FR-01'], action: '申请人点击通知链接直达本批次在线申报页；非目标群体不出现批次且链接拦截。' },
+        { id: 'f01_close', title: '申报窗口自动截止', role: 'R_sys', fr: ['FR-01'], action: '到达截止时间系统自动置「已截止」、关闭填报入口，草稿不可再提交；支持 PMO 对已截止批次执行代录补录（标记代录并留痕，承诺书确认完成前不得通过形式审查）。' },
+      ],
+      edges: [
+        { from: 'f01_draft', to: 'f01_appr', label: '提交审批', kind: 'main' },
+        { from: 'f01_appr', to: 'f01_draft', label: '退回重报', kind: 'return' },
+        { from: 'f01_appr', to: 'f01_pub', label: '审批通过', kind: 'main' },
+        { from: 'f01_pub', to: 'f01_recv', label: '推送目标群体', kind: 'auto' },
+        { from: 'f01_recv', to: 'f01_close', label: '申报窗口开放', kind: 'main' },
+      ] },
+
+    /* ===== FR-02 申报项目 ===== */
+    { id: 'J_f02', domain: 'D_pish', title: 'FR-02 申报项目',
+      note: '申请人接收通知 → 在线填报/Word 解析回填 → 全量校验 → 生成单据（审批中）→ 流转形式审查。',
+      roleOrder: ['R_pi', 'R_sys', 'R_pmo'],
+      steps: [
+        { id: 'f02_entry', title: '进入批次申报', role: 'R_pi', fr: ['FR-02'], action: '申请人从「立项申请」进入已发布批次，查看批次详情与立项指南。' },
+        { id: 'f02_fill', title: '填写申报书', role: 'R_pi', fr: ['FR-02'], action: '在线逐节填写（基本信息/申请人信息/研究内容/参加人员/预算明细），或上传 Word/PDF 申报书由系统自动解析回填；自动保存草稿、断线恢复。' },
+        { id: 'f02_commit', title: '承诺书与提交校验', role: 'R_pi', fr: ['FR-02'], action: '勾选经费使用承诺书（联合负责人填报时向其推送钉钉确认待办）；提交时系统完整校验：必填/字数/成员行规则（负责人唯一、成员≥1去重、分工非空）/承诺书/预算合计一致。' },
+        { id: 'f02_doc', title: '生成立项单据', role: 'R_sys', fr: ['FR-02'], action: '校验通过生成单据号、状态置「审批中」，流转 PMO 形式审查；外部申请人单据自动标注申请人类型。' },
+      ],
+      edges: [
+        { from: 'f02_entry', to: 'f02_fill', label: '开始填报', kind: 'main' },
+        { from: 'f02_fill', to: 'f02_commit', label: '填毕提交', kind: 'main' },
+        { from: 'f02_commit', to: 'f02_fill', label: '校验失败定位', kind: 'return' },
+        { from: 'f02_commit', to: 'f02_doc', label: '校验通过', kind: 'auto' },
+      ] },
+
+    /* ===== FR-03 形式审查 ===== */
+    { id: 'J_f03', domain: 'D_pish', title: 'FR-03 形式审查',
+      note: '机器校验+AI 辅助自动填充 → PMO 复核通过/终止 → 管理办负责人审批 → 分学部形审报告推送学部。',
+      roleOrder: ['R_sys', 'R_pmo', 'R_mgb', 'R_xzfhzr'],
+      steps: [
+        { id: 'f03_auto', title: '机器校验', role: 'R_sys', fr: ['FR-03'], action: '系统自动联动项目库/组织架构/成员库对限项、成员限制等校验，输出结果辅助 PMO。' },
+        { id: 'f03_ai', title: 'AI 辅助审查', role: 'R_sys', fr: ['FR-03'], action: 'AI 逐项输出：范围识别与外部标注、相似项目比对（仅提示留痕）、重要信息缺失检查、子方向自动归属匹配建议、申报载荷超项联动预警。' },
+        { id: 'f03_manual', title: 'PMO 人工审查', role: 'R_pmo', fr: ['FR-03'], action: 'PMO 基于机器+AI 结果复核调整并确认：通过（可批量）或终止（原因必填推送申请人）；支持流转说明与流转附件。' },
+        { id: 'f03_appr', title: '形审结果审批', role: 'R_mgb', fr: ['FR-03'], action: '管理办负责人对形审结果审批：通过后流转学部；退回由 PMO 修改重报；也支持自行修改结果并审批。' },
+        { id: 'f03_report', title: '分学部形审报告推送', role: 'R_sys', fr: ['FR-03'], action: '本学部全部单据结论落定后报告自动定版，经管理办负责人审批后推送本学部负责人与学部助理，单据流转学部环节。' },
+        { id: 'f03_push_xb', title: '学部接收形审报告', role: 'R_xzfhzr', fr: ['FR-03'], action: '学部负责人/助理接收分学部形审报告（站内信+钉钉+邮件），进入评委指派环节。' },
+      ],
+      edges: [
+        { from: 'f03_auto', to: 'f03_ai', label: '校验完成', kind: 'auto' },
+        { from: 'f03_ai', to: 'f03_manual', label: '结果自动填充', kind: 'auto' },
+        { from: 'f03_manual', to: 'f03_appr', label: '确认提交', kind: '联动' },
+        { from: 'f03_appr', to: 'f03_manual', label: '退回重报', kind: 'return' },
+        { from: 'f03_appr', to: 'f03_report', label: '审批通过', kind: 'main' },
+        { from: 'f03_report', to: 'f03_push_xb', label: '推送学部', kind: 'auto' },
+      ] },
+
+    /* ===== FR-04 指定评委（初审轮） ===== */
+    { id: 'J_f04', domain: 'D_pish', title: 'FR-04 指定评委（初审轮）',
+      note: '形审通过 → 学部核对/调整子方向 → 学部助理指派（≥3人/回避校验/AI匹配候选）→ 学部负责人审批生效 → 系统派发任务（带水印）→ 催办与改派。',
+      roleOrder: ['R_xzl', 'R_xzfhzr', 'R_sys', 'R_exp'],
+      steps: [
+        { id: 'f04_dir', title: '核对/调整所属子方向', role: 'R_xzl', fr: ['FR-04'], action: '形审通过后学部结合研究内容调整项目所属子方向（不回传申报人、不改申报书原文），作为后续指派与报告归属依据。' },
+        { id: 'f04_assign', title: '指派评委', role: 'R_xzl', fr: ['FR-04'], mapping: '', action: '学部助理逐单指派或新建评委组批量指派（≥3人）；系统校验回避（负责人/联合负责人标灰不可选）与人数；可用 AI 匹配候选（按研究方向领域标签排序）。' },
+        { id: 'f04_appr', title: '学部负责人审批', role: 'R_xzfhzr', fr: ['FR-04'], action: '学部助理指派后推送学部负责人审批，通过后指派生效；负责人亲办即生效。' },
+        { id: 'f04_notify', title: '评审任务派发', role: 'R_sys', fr: ['FR-04'], action: '指派/改派生效后系统向评委发送评审邀请（项目、任务、截止时间），评委从通知直达任务；申报书带水印（专家姓名+查看时间）。' },
+        { id: 'f04_reassign', title: '催办与改派', role: 'R_xzl', fr: ['FR-04'], action: '临期/逾期系统自动催办（钉钉+邮件四级节奏）并提醒指派人；无法履职改派：原评委已提交意见作废存档、权限与查看入口关闭；新评委赋权并重新校验，截止时间重算。' },
+        { id: 'f04_recv', title: '评委接收任务', role: 'R_exp', fr: ['FR-04'], action: '评委接收待办：查看评审规则与保密要求、预览申报书（水印）与附件；外部评委经邮件+门户消息接收。' },
+      ],
+      edges: [
+        { from: 'f04_dir', to: 'f04_assign', label: '归属确定', kind: 'main' },
+        { from: 'f04_assign', to: 'f04_appr', label: '提交审批', kind: 'main' },
+        { from: 'f04_appr', to: 'f04_assign', label: '退回调整', kind: 'return' },
+        { from: 'f04_appr', to: 'f04_notify', label: '审批通过', kind: 'main' },
+        { from: 'f04_notify', to: 'f04_recv', label: '钉钉/邮件推送', kind: 'auto' },
+        { from: 'f04_reassign', to: 'f04_notify', label: '改派生效', kind: 'related' },
+        { from: 'f04_reassign', to: 'f04_recv', label: '催办提醒', kind: 'return' },
+      ] },
+
+    /* ===== FR-04 指定评委（复审轮） ===== */
+    { id: 'J_f04r', domain: 'D_pish', title: 'FR-04 指定评委（复审轮）',
+      note: '复审轮由 PMO 指派评委（≥3人、回避校验同口径），管理办负责人审批后生效派发；学部对本轮页签只读；流程同 FR-04/05。',
+      roleOrder: ['R_pmo', 'R_mgb', 'R_sys', 'R_exp'],
+      steps: [
+        { id: 'f04r_assign', title: 'PMO 指派复审评委', role: 'R_pmo', fr: ['FR-04'], action: 'PMO 为全部待复审单据逐单/批量指定复审评委（≥3人、回避校验同口径），设定评审说明与截止时间。' },
+        { id: 'f04r_appr', title: '管理办负责人审批', role: 'R_mgb', fr: ['FR-04'], action: 'PMO 提交复审轮指派/改派后由管理办负责人审批，通过后生效派发；退回则 PMO 调整重提。' },
+        { id: 'f04r_notify', title: '复审任务派发', role: 'R_sys', fr: ['FR-04'], action: '审批通过后系统向复审评委发送任务（复审对象=修改后申报书+汇报PPT），外部评委经邮件+门户触达。' },
+        { id: 'f04r_reassign', title: '改派与催办', role: 'R_pmo', fr: ['FR-04'], action: '复审期内增派/替换评委：改派经管理办负责人审批后生效，原评委意见作废存档、新评委收任务。' },
+        { id: 'f04r_recv', title: '评委接收复审任务', role: 'R_exp', fr: ['FR-04'], action: '复审评委接收待办：评修改后申报书＋汇报 PPT（水印规则同申报书）。' },
+      ],
+      edges: [
+        { from: 'f04r_assign', to: 'f04r_appr', label: '提交审批', kind: 'main' },
+        { from: 'f04r_appr', to: 'f04r_assign', label: '退回重提', kind: 'return' },
+        { from: 'f04r_appr', to: 'f04r_notify', label: '审批通过', kind: 'main' },
+        { from: 'f04r_notify', to: 'f04r_recv', label: '推送评委', kind: 'auto' },
+        { from: 'f04r_reassign', to: 'f04r_appr', label: '改派审批', kind: 'related' },
+      ] },
+
+    /* ===== FR-05 专家评审打分 ===== */
+    { id: 'J_f05', domain: 'D_pish', title: 'FR-05 专家评审打分',
+      note: '评委接收任务 → 确认保密要求 → 四维度打分+意见 → 提交锁定 → 系统汇总评审报告（初审按学部计算 Z 分数）。',
+      roleOrder: ['R_exp', 'R_sys', 'R_xzfhzr'],
+      steps: [
+        { id: 'f05_agree', title: '保密要求确认', role: 'R_exp', fr: ['FR-05'], action: '评委首次进入评审工作台须点击「同意」保密要求后方可评分，同意记录（人/时间/IP）写入评审日志。' },
+        { id: 'f05_score', title: '四维度打分与意见', role: 'R_exp', fr: ['FR-05'], action: '按四维度（选题和科学价值/研究内容与方案/可行性论证/学生培养与成果转化）打 A/B/C 档＋每维意见＋综合意见；自动保存草稿、断线恢复。' },
+        { id: 'f05_submit', title: '提交锁定', role: 'R_exp', fr: ['FR-05'], action: '提交后评分锁定不可改；评审期内背靠背互不可见；截止时有效评审<3人→单据退回当轮指派页签重新指派。' },
+        { id: 'f05_report', title: '评审报告与Z分数', role: 'R_sys', fr: ['FR-05'], action: '全部提交或到截止后系统汇总：各项目评委评分与意见、均分及排名；初审按学部计算标准化得分 Z=(x−μ)/σ（σ=0 置空），跨子方向/评委组排序展示。' },
+      ],
+      edges: [
+        { from: 'f05_agree', to: 'f05_score', label: '同意后进入', kind: 'main' },
+        { from: 'f05_score', to: 'f05_submit', label: '填毕提交', kind: 'main' },
+        { from: 'f05_submit', to: 'f05_report', label: '截止/全部提交', kind: 'auto' },
+        { from: 'f05_submit', to: 'f05_score', label: '有效<3人退回', kind: 'return' },
+        { from: 'f05_report', to: 'f05_agree', label: '汇总形成', kind: 'related' },
+      ] },
+    { id: 'J_f05x', domain: 'D_pish', title: 'FR-05 评审报告流转',
+      note: '评审汇总报告生成后流转学部确认推荐。',
+      roleOrder: ['R_sys', 'R_xzfhzr'],
+      steps: [
+        { id: 'f05x_gen', title: '汇总评审报告', role: 'R_sys', fr: ['FR-05'], action: '汇总各项目评委评分与意见形成评审报告（评委评分、意见、均分与排名），流转学部确认推荐。' },
+        { id: 'f05x_push', title: '推送学部', role: 'R_xzfhzr', fr: ['FR-05'], action: '评审报告推送学部负责人与学部助理，进入学部确认推荐环节（FR-06）。' },
+      ],
+      edges: [
+        { from: 'f05x_gen', to: 'f05x_push', label: '流转学部', kind: 'auto' },
+      ] },
+
+    /* ===== FR-06 学部确认推荐立项 ===== */
+    { id: 'J_f06', domain: 'D_pish',  title: 'FR-06 学部确认推荐立项',
+      note: '评审汇总 → 学部助理整理（推荐/不推荐+项目评语+战略标记）→ 学部负责人审核生效 → 学部推荐报告流转 PMO 合议。',
+      roleOrder: ['R_xzl', 'R_xzfhzr', 'R_sys'],
+      steps: [
+        { id: 'f06_read', title: '查看评审汇总', role: 'R_xzl', fr: ['FR-06'], action: '学部批量列表查看各专家评审总分、评审均分与逐条意见。' },
+        { id: 'f06_decide', title: '确认推荐/不推荐', role: 'R_xzl', fr: ['FR-06'], action: '逐单确认推荐/不推荐＋项目评语（每项目一份）；战略相关项目逐项勾选标记（占比=战略推荐数÷推荐总数，阈值仅提示不拦截）。' },
+        { id: 'f06_submit', title: '助理整理提交', role: 'R_xzl', fr: ['FR-06'], action: '学部助理完成全量整理（勾选/项目评语/排序/战略标记/学部评语）后提交学部负责人审核；不推荐→流程终止、意见留痕并告知申请人。' },
+        { id: 'f06_appr', title: '学部负责人审核', role: 'R_xzfhzr', fr: ['FR-06'], action: '负责人审核：同意即生效（审核中可修改任意内容、改动留痕）；退回注明原因退回助理修改重提；负责人亲办即生效、无需自审。' },
+        { id: 'f06_report', title: '学部推荐报告定版', role: 'R_sys', fr: ['FR-06'], action: '审核生效即学部推荐报告定版（报告头含单据数/推荐数/不推荐数/战略占比），随名单流转 PMO 合议（FR-07）。' },
+      ],
+      edges: [
+        { from: 'f06_read', to: 'f06_decide', label: '查看汇总', kind: 'main' },
+        { from: 'f06_decide', to: 'f06_submit', label: '逐单确认', kind: 'main' },
+        { from: 'f06_submit', to: 'f06_appr', label: '提交审核', kind: 'main' },
+        { from: 'f06_appr', to: 'f06_submit', label: '退回重提', kind: 'return' },
+        { from: 'f06_appr', to: 'f06_report', label: '同意生效', kind: 'auto' },
+      ] },
+
+    /* ===== FR-07 合议与入选确认 ===== */
+    { id: 'J_f07', domain: 'D_pish', title: 'FR-07 合议与入选确认',
+      note: 'PMO 汇总各学部推荐名单 → 线下合议 → 系统更新名单（增删留痕）→ 按学部推送学部负责人审批 → 转入复审。',
+      roleOrder: ['R_pmo', 'R_mgb', 'R_xzfhzr'],
+      steps: [
+        { id: 'f07_meet', title: '组织线下合议', role: 'R_pmo', fr: ['FR-07'], action: 'PMO 汇总各学部推荐名单组织线下合议（抄送管理办负责人）；合议为线下环节，系统只承载结果。' },
+        { id: 'f07_update', title: '更新入选名单', role: 'R_pmo', fr: ['FR-07'], action: 'PMO 按合议结果在系统对名单增删（增补/删减理由必填留痕），更新学部推荐报告、标记项目合议后状态（推荐立项/不推荐立项）。' },
+        { id: 'f07_push', title: '名单按学部推送', role: 'R_sys', fr: ['FR-07'], action: '更新后的报告按学部推送各学部负责人审批本学部入选名单；合议名单与增删记录抄送管理办负责人。' },
+        { id: 'f07_appr', title: '学部负责人审批名单', role: 'R_xzfhzr', fr: ['FR-07'], action: '学部负责人审批本学部入选名单：通过→转入复审流程（PMO 指派复审评委）；终止→退回 PMO 调整名单后重推，移出项目置「已终止」并通知申请人。' },
+        { id: 'f07_to_re', title: '进入复审流程', role: 'R_sys', fr: ['FR-07'], action: '名单审批通过后单据进入复审流程，由 PMO 指派复审评委（FR-04 复审轮）进行复审；复审流程同 FR-04~FR-05。' },
+      ],
+      edges: [
+        { from: 'f07_meet', to: 'f07_update', label: '线下合议结果', kind: 'main' },
+        { from: 'f07_update', to: 'f07_push', label: '名单更新', kind: 'auto' },
+        { from: 'f07_push', to: 'f07_appr', label: '推送学部', kind: 'main' },
+        { from: 'f07_appr', to: 'f07_update', label: '终止退回重推', kind: 'return' },
+        { from: 'f07_appr', to: 'f07_to_re', label: '通过转入复审', kind: 'main' },
+      ] },
+
+    /* ===== FR-08 管理办负责人终审 ===== */
+    { id: 'J_f08', domain: 'D_pish', title: 'FR-08 管理办负责人终审',
+      note: '复审报告经学部负责人审批 → 管理办负责人终审（通过/终止）→ 通过后系统锁定评审记录生成立项清单存档。',
+      roleOrder: ['R_xzfhzr', 'R_mgb'],
+      steps: [
+        { id: 'f08_pre', title: '复审报告学部审批', role: 'R_xzfhzr', fr: ['FR-08'], action: '复审报告经学部负责人审批后进入管理办负责人终审。' },
+        { id: 'f08_final', title: '管理办终审', role: 'R_mgb', fr: ['FR-08'], action: '管理办负责人查看完整评审过程与意见汇总，终审可整体通过、也可对个别项目终止（终止意见必填、终局出局）；批量通过共用审批意见、二次确认显示单数与项目名清单。' },
+        { id: 'f08_lock', title: '评审记录锁定存档', role: 'R_sys', fr: ['FR-08'], action: '终审通过后系统自动锁定评审记录并生成立项清单存档。' },
+      ],
+      edges: [
+        { from: 'f08_pre', to: 'f08_final', label: '复审审批通过', kind: 'main' },
+        { from: 'f08_final', to: 'f08_lock', label: '终审通过', kind: 'auto' },
+      ] },
+
+    /* ===== FR-09 立项入库 ===== */
+    { id: 'J_f09', domain: 'D_pish', title: 'FR-09 立项入库',
+      note: '终审通过 → 系统生成立项条目（项目编号）→ 写入项目库置「待启动」→ 同步学生招募与启动条件判定。',
+      roleOrder: ['R_sys'],
+      steps: [
+        { id: 'f09_in', title: '立项条目生成入库', role: 'R_sys', fr: ['FR-09'], action: '终审通过后系统按编号规则（项目类型码2位+年份2位+月份2位+序号3位，全局唯一、生成后不可改）生成项目编号，申报书全量字段+学部/子方向+核准经费总额与科目明细写入项目库。' },
+        { id: 'f09_status', title: '项目置「待启动」', role: 'R_sys', fr: ['FR-09'], action: '入库即置「待启动」，同步启动学生招募工作，启动条件判定开始。' },
+        { id: 'f09_notify', title: '入库通知', role: 'R_sys', fr: ['FR-09'], action: '立项入库触发通知申请人、学部负责人、管理办负责人（站内信+钉钉，含项目编号与核准经费额度）。' },
+      ],
+      edges: [
+        { from: 'f09_in', to: 'f09_status', label: '主数据写入', kind: 'auto' },
+        { from: 'f09_status', to: 'f09_notify', label: '状态置位', kind: 'auto' },
+      ] },
+
+    /* ===== FR-10 流程模板配置 ===== */
+    { id: 'J_f10', domain: 'D_tplt', title: 'FR-10 流程模板配置',
+      note: '节点类型库编排 + 条件网关配置 + 批次进度计划模板 + 截止提醒规则 → 版本发布锁定快照。',
+      roleOrder: ['R_pmo', 'R_sys'],
+      steps: [
+        { id: 'f10_orch', title: '节点编排与条件网关', role: 'R_pmo', fr: ['FR-10'], action: 'PMO 从节点类型库增删/排序流程节点，配置各节点执行角色（岗位/关系/指定/上一节点指定）、办理时限与超时动作；入库终态固定末端不可删。' },
+        { id: 'f10_gate', title: '条件网关配置', role: 'R_pmo', fr: ['FR-10'], action: '预置条件项（预算方式、预算金额区间、是否跨学部、项目类型、评审均分区间）配置分流（如预算制经财务复审、包干制不经），不开放自由表达式。' },
+        { id: 'f10_plan', title: '批次进度计划配置', role: 'R_pmo', fr: ['FR-10'], action: '按流程节点设定标准时长与先后衔接（申报期/评审期/合议期/终审期标准天数），创建批次时自动按模板生成时间安排、批次内可微调后发布。' },
+        { id: 'f10_remind', title: '截止提醒时间设置', role: 'R_pmo', fr: ['FR-10'], action: '系统层级配置各环节截止提醒规则：按节点设置提醒时间点（截止前3天/前1天/当天）与提醒对象（评委、节点负责人、管理办）。' },
+        { id: 'f10_pub', title: '版本发布与快照', role: 'R_sys', fr: ['FR-10'], action: '保存草稿→发布生成新版本号；项目提交时按批次绑定模板的当时版本生成流程实例快照，后续修改不影响在途；已绑定批次的模板不可删仅可停用。' },
+      ],
+      edges: [
+        { from: 'f10_orch', to: 'f10_gate', label: '节点编排完成', kind: 'main' },
+        { from: 'f10_gate', to: 'f10_plan', label: '网关配置完成', kind: 'main' },
+        { from: 'f10_plan', to: 'f10_remind', label: '进度计划配置', kind: 'main' },
+        { from: 'f10_remind', to: 'f10_pub', label: '提醒规则配置', kind: 'main' },
+      ] },
+
+    /* ===== FR-11 申报表单模板配置 ===== */
+    { id: 'J_f11', domain: 'D_tplt', title: 'FR-11 申报表单模板配置',
+      note: '基础字段集（固定）+ 扩展字段（八类可配）→ 字段属性与校验规则 → 发布版本锁定 → 批次绑定。',
+      roleOrder: ['R_pmo'],
+      steps: [
+        { id: 'f11_fields', title: '字段序列编排', role: 'R_pmo', fr: ['FR-11'], action: '基础字段集（项目名称/负责人/类别/预算方案/立项依据与预期成果）固定顶部、可排序不可删；扩展字段按项目类型自由增删/排序。' },
+        { id: 'f11_attr', title: '字段属性与校验配置', role: 'R_pmo', fr: ['FR-11'], action: '每字段配置字段名、类型（八类）、必填、校验规则（限长/数值区间/字典）、填写说明；包干制批次自动插入三类科目列支提醒文字。' },
+        { id: 'f11_bind', title: '模板绑定与锁定', role: 'R_pmo', fr: ['FR-11'], action: '批次发布时锁定绑定模板版本，批次内全部申报按该版本填报；已发布批次换绑视同关键字段修改（二次确认+钉钉通知）；有草稿/在途单据时不可换绑。' },
+      ],
+      edges: [
+        { from: 'f11_fields', to: 'f11_attr', label: '字段编排完成', kind: 'main' },
+        { from: 'f11_attr', to: 'f11_bind', label: '属性配置完成', kind: 'main' },
+      ] },
+
+    /* ===== FR-12 项目启动 ===== */
+    { id: 'J_f12', domain: 'D_center', title: 'FR-12 项目启动（条件启动机制）',
+      note: 'PMO 配置启动规则（条件项 AND 组合）→ 系统实时判定+每日兜底扫描 → 全达成自动启动 → 通知下拨与负责人；PMO 可强制启动。',
+      roleOrder: ['R_pmo', 'R_sys', 'R_fin', 'R_pi'],
+      steps: [
+        { id: 'f12_cfg', title: '配置启动规则', role: 'R_pmo', fr: ['FR-12'], action: '按项目类型从预置条件项库（主项目学生人数≥N/经费到账确认/项目书修改审批/固定日期到达）选条件 AND 组合并设阈值；一类项目一条规则，在库项目按入库时快照判定。' },
+        { id: 'f12_track', title: '条件达成跟踪', role: 'R_sys', fr: ['FR-12'], action: '条件相关数据变化时实时判定＋每日定时兜底扫描；条件不足项目持续停留「待启动」，达成进度实时可见。' },
+        { id: 'f12_start', title: '条件达成自动启动', role: 'R_sys', fr: ['FR-12'], action: '条件全部满足→系统自动置「启动」并通知科研财务下拨经费（站内信+钉钉+邮件）与项目负责人；「启动」为单向状态、不回退。' },
+        { id: 'f12_force', title: '强制启动（人工兜底）', role: 'R_pmo', fr: ['FR-12'], action: '条件长期不达成或情况特殊时，PMO 对单个「待启动」项目执行强制启动：原因必填、全量留痕，效果等同条件启动。' },
+        { id: 'f12_alloc', title: '经费下拨与到账', role: 'R_fin', fr: ['FR-12'], action: '科研财务接收下拨待办执行经费下拨；经费下拨完成→项目转「在研」，进入在研管理。' },
+      ],
+      edges: [
+        { from: 'f12_cfg', to: 'f12_track', label: '规则生效', kind: 'auto' },
+        { from: 'f12_track', to: 'f12_start', label: '条件全达成', kind: 'auto' },
+        { from: 'f12_track', to: 'f12_force', label: '长期未达成', kind: 'related' },
+        { from: 'f12_start', to: 'f12_alloc', label: '启动通知', kind: 'main' },
+        { from: 'f12_force', to: 'f12_alloc', label: '启动通知', kind: 'related' },
+      ] },
+
+    /* ===== FR-13 流程干预 ===== */
+    { id: 'J_f13', domain: 'D_tplt', title: 'FR-13 PMO 流程干预',
+      note: 'PMO 从批次工作台选中审批中单据 → 选已流转节点（原因必填）→ 执行回退 → 目标节点重审。',
+      roleOrder: ['R_pmo', 'R_mgb'],
+      steps: [
+        { id: 'f13_pick', title: '选择单据与目标节点', role: 'R_pmo', fr: ['FR-13'], action: 'PMO 从批次工作台选中审批中单据→流程干预→目标节点仅可选该单据已流转过的节点（未流转置灰、不可向前跳）；终态单据不可干预。' },
+        { id: 'f13_exec', title: '执行回退（审批）', role: 'R_pmo', fr: ['FR-13'], action: '回退原因必填（富文本留痕）；PMO 操作需管理办负责人审批；执行后单据回目标节点重新处理，目标节点后的全部结论作废留痕，通知前后环节相关人。' },
+        { id: 'f13_audit', title: '干预历史查询', role: 'R_pmo', fr: ['FR-13'], action: '干预记录（操作人/时间/原位置/目标节点/原因）逐单可查，可按批次、节点与操作类型查询；干预不影响各节点原有留痕数据。' },
+      ],
+      edges: [
+        { from: 'f13_pick', to: 'f13_exec', label: '选节点填原因', kind: 'main' },
+        { from: 'f13_exec', to: 'f13_audit', label: '执行留痕', kind: 'auto' },
+      ] },
+
+    /* ===== FR-14 项目中心 ===== */
+    { id: 'J_f14', domain: 'D_center', title: 'FR-14 项目中心',
+      note: '项目自动入库 → 授权分配 → 查看/维护（分 Tab、变更留痕）→ 终止（置已中止）。',
+      roleOrder: ['R_sys', 'R_pi', 'R_pmo'],
+      steps: [
+        { id: 'f14_in', title: '项目自动入库与授权', role: 'R_sys', fr: ['FR-14'], action: '立项终审通过后自动读取立项单全量数据、生成唯一项目编号写入项目库；自动给项目负责人、PM、部门负责人分配查看维护权限，生成首条变更记录。' },
+        { id: 'f14_view', title: '项目查看', role: 'R_pi', fr: ['FR-14'], action: '项目中心→项目列表，按名称/编号/类型/学部/状态筛选；详情 Tab：基本信息/组织与负责人/项目成员/季度推进会/科研成果/梧桐杯加速/变更记录。' },
+        { id: 'f14_edit', title: '项目维护', role: 'R_pi', fr: ['FR-14'], action: '授权角色点编辑分 Tab 维护全部字段（基础信息/人员/推进会/成果/梧桐杯信息）→ 保存；自动生成变更记录（变更类型/操作人/变更说明/时间）。' },
+        { id: 'f14_stop', title: '项目终止', role: 'R_pi', fr: ['FR-14'], action: '授权角色点终止→填写终止时间与原因→状态置「已中止」；系统锁定大部分编辑项仅保留查看，自动写入变更记录。' },
+        { id: 'f14_fin', title: '在研经费执行统计', role: 'R_fin', fr: ['FR-14'], action: '外部项目到款确认计入经费执行统计（FR-15 到款口径）；项目档案随全程累积更新（成员变动/季度推进会/梧桐杯参赛/科研成果）。' },
+      ],
+      edges: [
+        { from: 'f14_in', to: 'f14_view', label: '入库完成', kind: 'auto' },
+        { from: 'f14_view', to: 'f14_edit', label: '查看详情', kind: 'main' },
+        { from: 'f14_edit', to: 'f14_view', label: '保存留痕', kind: 'auto' },
+        { from: 'f14_view', to: 'f14_stop', label: '终止操作', kind: 'related' },
+        { from: 'f14_edit', to: 'f14_fin', label: '档案累积', kind: 'related' },
+      ] },
+
+    /* ===== FR-15 外部项目登记 ===== */
+    { id: 'J_f15', domain: 'D_ext', title: 'FR-15 外部项目登记',
+      note: '登记入口（常年开放）→ 填写登记表单+佐证 → 全量校验 → 四级审批链 → 入库直通在研 → 到款确认。',
+      roleOrder: ['R_pi', 'R_zbfzr', 'R_xzfhzr', 'R_fin', 'R_mgb'],
+      steps: [
+        { id: 'f15_reg', title: '外部项目登记', role: 'R_pi', fr: ['FR-15'], action: '项目负责人从「外部项目登记」入口在线填写项目书信息（横向/纵向手选学部与子方向，联合实验室自动带出）并上传佐证材料；不挂批次、不设窗口、不形审不评审。' },
+        { id: 'f15_v', title: '提交校验', role: 'R_sys', fr: ['FR-15'], action: '系统做完整校验：必填/字数/成员行规则/承诺书/到款计划合计与外部经费总额一致/子方向与学部一致；通过后生成单据号进入子方向负责人审批。' },
+        { id: 'f15_a1', title: '子方向负责人审批', role: 'R_zbfzr', fr: ['FR-15'], action: '归口业务把关（项目与子方向研究方向相符性、团队承担能力）；通过→学部负责人审批；终止→终态（终止意见必填）。' },
+        { id: 'f15_a2', title: '学部负责人审批', role: 'R_xzfhzr', fr: ['FR-15'], action: '复核子方向归属与项目整体安排；通过→科研财务审批；终止→终态（终止意见必填）。' },
+        { id: 'f15_a3', title: '科研财务审批', role: 'R_fin', fr: ['FR-15'], action: '复核外部经费信息（总额/分年度到款计划/经费管理方式）；通过→管理办负责人审批；终止→终态（意见定位具体问题）。' },
+        { id: 'f15_a4', title: '管理办负责人终审', role: 'R_mgb', fr: ['FR-15'], action: '查看登记全量材料与各节点审批意见执行通过/终止；终止→终态（终止意见必填）。' },
+        { id: 'f15_in', title: '入库直通在研', role: 'R_sys', fr: ['FR-15'], action: '通过→生成项目编号→登记全量字段+学部/子方向+外部经费总额写入主数据→状态直接置「在研」（不经待启动、不适用启动条件判定）→立项来源标注「外部导入」。' },
+        { id: 'f15_pay', title: '到款确认', role: 'R_fin', fr: ['FR-15'], action: '学院账户管理项目在研期间按分年度到款计划逐笔确认到款（留痕、计入经费执行统计）；不影响项目状态；委托单位直接管理项目无此操作。' },
+      ],
+      edges: [
+        { from: 'f15_reg', to: 'f15_v', label: '提交登记', kind: 'main' },
+        { from: 'f15_v', to: 'f15_a1', label: '校验通过', kind: 'auto' },
+        { from: 'f15_a1', to: 'f15_a2', label: '通过', kind: 'main' },
+        { from: 'f15_a2', to: 'f15_a3', label: '通过', kind: 'main' },
+        { from: 'f15_a3', to: 'f15_a4', label: '通过', kind: 'main' },
+        { from: 'f15_a4', to: 'f15_in', label: '终审通过', kind: 'auto' },
+        { from: 'f15_in', to: 'f15_pay', label: '入库后在研', kind: 'main' },
+        { from: 'f15_a1', to: 'f15_reg', label: '终止告知登记人', kind: 'return' },
+      ] },
+
+    /* ===== FR-16 评审表模板 ===== */
+    { id: 'J_f16', domain: 'D_tplt', title: 'FR-16 评审表模板',
+      note: 'PMO 配置评分维度/档位分值/细化标准/计分规则 → 发布校验区间连续 → 批次+轮次绑定锁定。',
+      roleOrder: ['R_pmo'],
+      steps: [
+        { id: 'f16_dim', title: '评分维度编排', role: 'R_pmo', fr: ['FR-16'], action: '预置系统默认四维度（可增删调序），各维度含档位与分值区间、档位细化标准文案（默认值=现3.6.2 A档描述）可编辑。' },
+        { id: 'f16_rule', title: '计分与意见字段配置', role: 'R_pmo', fr: ['FR-16'], action: '打分方式（分值区间/等级评价/定性意见）与分数计算规则；评审意见字段配置必填/选填与字数上限；批次级「评审规则」「评审保密要求」文本可按批次修改（不回写模板）。' },
+        { id: 'f16_pub', title: '发布校验与绑定', role: 'R_pmo', fr: ['FR-16'], action: '保存/发布校验档位分值区间连续、不重不漏，异常拦截定位；按批次+评审轮次绑定，同批次同轮全部项目统一锁定版本（跨项目均分口径一致）；停用后新轮次不可选、在途照常。' },
+      ],
+      edges: [
+        { from: 'f16_dim', to: 'f16_rule', label: '维度编排完成', kind: 'main' },
+        { from: 'f16_rule', to: 'f16_pub', label: '规则配置完成', kind: 'main' },
+      ] },
+
+    /* ===== FR-17 外部用户注册 ===== */
+    { id: 'J_f17', domain: 'D_reg', title: 'FR-17 外部用户注册',
+      note: 'PMO 生成注册链接（身份参数）→ 外部人员注册 → 外部评审资质审核入库 → 独立工作台。',
+      roleOrder: ['R_pmo', 'R_sys', 'R_pi'],
+      steps: [
+        { id: 'f17_link', title: '生成注册链接', role: 'R_pmo', fr: ['FR-17'], action: 'PMO 手动生成携带身份参数（外部申请人/外部评审）的注册链接经邮箱/短信发送；链接不公开投放，默认 30 天有效、到期失效。' },
+        { id: 'f17_reg', title: '注册账户', role: 'R_pi', fr: ['FR-17'], action: '外部人员经链接注册：统一注册信息（姓名/手机号唯一主键/邮箱/单位/职务职称/学历学位/研究领域/合作的院内人员），身份可叠加兼任；登录以验证码为主、密码可选。' },
+        { id: 'f17_audit', title: '外部评审资质审核', role: 'R_pmo', fr: ['FR-17'], action: '外部评审账户由 PMO 依据注册信息审核（单位/职务职称/学历学位/研究领域），通过后进入专家库可被指派，未通过不予入库。' },
+        { id: 'f17_ws', title: '外部工作台', role: 'R_pi', fr: ['FR-17'], action: '外部用户登录后进入独立工作台：外部申请人仅见「我的申报」（本人单据），外部评审仅见「我的评审任务」（被指派任务）；内部菜单一律不可见。' },
+      ],
+      edges: [
+        { from: 'f17_link', to: 'f17_reg', label: '邮箱发送链接', kind: 'auto' },
+        { from: 'f17_reg', to: 'f17_audit', label: '注册完成', kind: 'main' },
+        { from: 'f17_audit', to: 'f17_ws', label: '审核入库', kind: 'main' },
+        { from: 'f17_reg', to: 'f17_ws', label: '申请人直接进入', kind: 'related' },
+      ] },
+
+    /* ===== FR-18 过程监控与审计导出 ===== */
+    { id: 'J_f18', domain: 'D_mon', title: 'FR-18 过程监控与审计导出',
+      note: '申报统计（批次维度）+ 评审过程监控 + 全过程漏斗与台账 → 超时标记待办清单 → 审计导出（Excel+PDF水印）。',
+      roleOrder: ['R_sys', 'R_pmo', 'R_xzfhzr'],
+      steps: [
+        { id: 'f18_stat', title: '申报进度监控', role: 'R_sys', fr: ['FR-18'], action: '批次维度：累计提交/草稿进行中/未提交/外部申请人单数统计卡、各学部分布与占比（实时更新）、已提交明细；学部视角仅本学部。' },
+        { id: 'f18_rev', title: '评审过程监控', role: 'R_sys', fr: ['FR-18'], action: '评审期间即可查看逐项目×逐专家×四维度评分、意见、提交时间戳，已提交/未提交状态实时可见；学部限本学部、管理办全院。' },
+        { id: 'f18_todo', title: '超时标记与待办清单', role: 'R_sys', fr: ['FR-18'], action: '对停留超时、临近截止与逾期未处理事项自动标记并汇总成待办清单；学部负责人可一键催办（节奏同四级提醒，留痕）。' },
+        { id: 'f18_exp', title: '审计导出', role: 'R_pmo', fr: ['FR-18'], action: '导出申报明细与评审过程明细：Excel 全量字段＋PDF 带水印（导出人+导出时间）；导出权限：PMO/管理办负责人（全院）、学部负责人（本学部）；导出动作落审计日志。' },
+      ],
+      edges: [
+        { from: 'f18_stat', to: 'f18_rev', label: '环节视图切换', kind: 'related' },
+        { from: 'f18_rev', to: 'f18_todo', label: '超时自动标记', kind: 'auto' },
+        { from: 'f18_todo', to: 'f18_exp', label: '清单查询导出', kind: 'main' },
+      ] },
+
+  ],
+
+  /* ---------------- 流程总览:按领域组织入口 ---------------- */
+  flowsOverview: [
+    { domain: 'D_pish', label: '项目立项与评审', flows: [
+      { flowId: 'J_f01', label: 'FR-01 立项指南发布', summary: 'PMO 发起批次→审批发布→推送→自动截止' },
+      { flowId: 'J_f02', label: 'FR-02 申报项目', summary: '在线填报/解析回填→全量校验→生成单据' },
+      { flowId: 'J_f03', label: 'FR-03 形式审查', summary: '机器+AI→PMO 复核→报告审批→推送学部' },
+      { flowId: 'J_f04', label: 'FR-04 指定评委（初审轮）', summary: '调整子方向→指派（≥3人/回避）→审批→派发' },
+      { flowId: 'J_f04r', label: 'FR-04 指定评委（复审轮）', summary: 'PMO 指派→管理办审批→派发复审任务' },
+      { flowId: 'J_f05', label: 'FR-05 专家评审打分', summary: '保密确认→四维度打分→锁定→汇总Z分数' },
+      { flowId: 'J_f05x', label: 'FR-05 评审报告流转', summary: '汇总报告推送学部进入确认推荐' },
+      { flowId: 'J_f06', label: 'FR-06 学部确认推荐立项', summary: '助理整理→负责人审核→推荐报告定版' },
+      { flowId: 'J_f07', label: 'FR-07 合议与入选确认', summary: '线下合议→名单更新→按学部审批→转入复审' },
+      { flowId: 'J_f08', label: 'FR-08 管理办负责人终审', summary: '复审报告学部审批→终审→锁定存档' },
+      { flowId: 'J_f09', label: 'FR-09 立项入库', summary: '编号生成→主数据写入→待启动→学生招募' },
+    ] },
+    { domain: 'D_ext', label: '外部项目域', flows: [
+      { flowId: 'J_f15', label: 'FR-15 外部项目登记', summary: '登记→校验→四级审批链→直通在研→到款确认' },
+    ] },
+    { domain: 'D_tplt', label: '模板与规则域', flows: [
+      { flowId: 'J_f10', label: 'FR-10 流程模板配置', summary: '节点编排/条件网关/进度计划/提醒→版本发布' },
+      { flowId: 'J_f11', label: 'FR-11 申报表单模板配置', summary: '基础+扩展字段→属性校验→版本锁定' },
+      { flowId: 'J_f16', label: 'FR-16 评审表模板', summary: '维度/档位/计分规则→校验发布→轮次绑定' },
+      { flowId: 'J_f13', label: 'FR-13 PMO 流程干预', summary: '选已过节点→原因必填→回退重审（全留痕）' },
+    ] },
+    { domain: 'D_center', label: '项目中心域', flows: [
+      { flowId: 'J_f12', label: 'FR-12 项目启动', summary: '启动规则→条件跟踪→自动/强制启动→下拨' },
+      { flowId: 'J_f14', label: 'FR-14 项目中心', summary: '自动入库授权→查看维护→终止' },
+    ] },
+    { domain: 'D_reg', label: '外部用户域', flows: [
+      { flowId: 'J_f17', label: '外部用户注册', summary: '注册链接→注册账户→资质审核→外部工作台' },
+    ] },
+    { domain: 'D_mon', label: '监控与审计域', flows: [
+      { flowId: 'J_f18', label: 'FR-18 过程监控与审计导出', summary: '申报/评审/全过程监控→超时待办→审计导出' },
+    ] },
+  ],
+};
+
+window.ATLAS_DATA_READY = true;
