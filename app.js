@@ -172,28 +172,53 @@ function selectControl(items, value, onchange, aria) {
 }
 function stepEdges(f) { return f.edges.map(e => ({ from: e.from, to: e.to, label: e.label, type: EDGE_TYPE[e.kind] ?? '' })) }
 
+let carouselIndex = 0; /* 业务角色轮播当前位置（页面切换后保持） */
+window.addEventListener('keydown', e => { /* 总览页键盘 ←/→ 切换角色轮播 */
+  if (!document.querySelector('#canvas .carousel-track')) return;
+  const n = scopedRoles().length; if (!n) return;
+  if (e.key === 'ArrowLeft') { carouselIndex = (Math.min(carouselIndex, n - 1) - 1 + n) % n; render() }
+  else if (e.key === 'ArrowRight') { carouselIndex = (Math.min(carouselIndex, n - 1) + 1) % n; render() }
+});
+
 function renderOverview() {
   const bar = $('#toolbar'), body = $('#canvas');
-  bar.append(el('label', '', '业务领域与角色'), el('span', 'tool-note', `${domains.length} 个领域 · ${roles.length} 个角色 · ${flows.length} 条主线`));
+  bar.append(el('label', '', '业务角色总览'), el('span', 'tool-note', `${domains.length} 个领域 · ${roles.length} 个角色 · ${flows.length} 条主线`));
   const p = el('div', 'portfolio');
-  const h = el('div', 'portfolio-header'); ['', '业务领域', '工作场景', '交付结果'].forEach(x => h.append(el('span', '', x))); p.append(h);
-  scopedDomains().forEach((d, i) => {
-    const r = el('div', 'domain-row');
-    r.append(el('div', 'domain-number', String(i + 1).padStart(2, '0')));
-    const t = el('div'); t.append(btn(d.title, () => inspect(d.id), 'domain-title'), el('div', 'domain-summary', d.summary)); r.append(t);
-    const sc = el('div'); d.scenarioIds.forEach(id => sc.append(btn(scenTitle(id) + '  →', () => navigate('scenarios', id), 'scenario-item')));
-    r.append(sc, el('div', 'outcome', d.outcome)); p.append(r);
-  });
-  const rh = el('div', 'portfolio-header'); ['', '业务角色', '主要职责', '参与场景'].forEach(x => rh.append(el('span', '', x))); p.append(rh);
-  scopedRoles().forEach((r, i) => {
-    const row = el('div', 'domain-row');
-    const num = el('div', 'domain-number', String(i + 1).padStart(2, '0')); num.style.color = ROLE_COLORS[r.id] || ''; row.append(num);
-    const t = el('div'); t.append(btn(r.name, () => inspect(r.id), 'domain-title'), el('div', 'domain-summary', r.org + (r.tabs ? ' · ' + r.tabs.join(' / ') : ''))); row.append(t);
-    row.append(el('div', 'domain-summary', r.duties.join('；')));
-    const sc = el('div');
+  /* 业务角色轮播：左右切换卡片（不做上下滚动） */
+  const roleList = scopedRoles();
+  const idx = Math.min(carouselIndex, Math.max(0, roleList.length - 1));
+  const cwrap = el('div', 'role-carousel');
+  const ctitle = el('div', 'carousel-title'); ctitle.append(el('span', 'carousel-eyebrow', '业务角色'), el('h2', '', '角色职责总览'), el('span', 'carousel-count', roleList.length ? `${idx + 1} / ${roleList.length}` : ''));
+  const cnav = el('div', 'carousel-nav');
+  const prevB = btn('‹', () => stepCarousel(-1), 'carousel-btn'); prevB.setAttribute('aria-label', '上一个角色');
+  const nextB = btn('›', () => stepCarousel(1), 'carousel-btn'); nextB.setAttribute('aria-label', '下一个角色');
+  cnav.append(prevB, nextB);
+  cwrap.append(ctitle, cnav);
+  const track = el('div', 'carousel-track');
+  roleList.forEach((r, i) => {
+    const slide = el('div', 'carousel-slide' + (i === idx ? ' active' : ''));
+    const num = el('div', 'carousel-number', String(i + 1).padStart(2, '0'));
+    num.style.color = ROLE_COLORS[r.id] || '';
+    const t = el('div');
+    t.append(btn(r.name, () => inspect(r.id), 'domain-title'), el('div', 'domain-summary', r.org + (r.tabs ? ' · ' + r.tabs.join(' / ') : '')));
+    const duty = el('div', 'carousel-duty');
+    r.duties.forEach(d => duty.append(el('p', 'duty-line', d)));
+    const sc = el('div', 'carousel-scenes');
     uniq(caps.filter(c => c.role === r.id).flatMap(c => c.scenarios)).filter(id => scopedScenarios().some(s => s.id === id))
       .forEach(id => sc.append(btn(scenTitle(id) + '  →', () => navigate('scenarios', id), 'scenario-item')));
-    row.append(sc); p.append(row);
+    if (!sc.children.length) sc.append(el('p', 'domain-summary', '在当前业务范围下暂无参与场景。'));
+    const b1 = el('div', 'carousel-block'); b1.append(el('h3', '', '主要职责'), duty);
+    const b2 = el('div', 'carousel-block'); b2.append(el('h3', '', '参与场景'), sc);
+    slide.append(num, t, b1, b2);
+    track.append(slide);
+  });
+  const dots = el('div', 'carousel-dots');
+  roleList.forEach((r, i) => { const d = btn('', () => { carouselIndex = i; render() }, 'carousel-dot' + (i === idx ? ' active' : '')); d.setAttribute('aria-label', `角色 ${i + 1}`); dots.append(d) });
+  if (!roleList.length) track.append(el('div', 'empty-state', '当前业务范围暂无角色。'));
+  p.append(cwrap, track, dots);
+  function stepCarousel(dir) { const n = roleList.length; if (!n) return; carouselIndex = (idx + dir + n) % n; render() }
+  requestAnimationFrame(() => { /* 切换后自动滚到 active 卡片，避免横滑错位 */
+    const act = track.querySelector('.carousel-slide.active'); if (act) act.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   });
   body.append(p);
 }
