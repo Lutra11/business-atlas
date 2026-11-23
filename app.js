@@ -130,15 +130,51 @@ function inspect(id, custom) {
   }
   if (caps.some(c => c.id === n.id) && !step && !outcome) {
     root.append(el('h3', '', '负责角色')); rel(root, n.role);
-    addSection(root, '业务说明', n.summary);
+    /* 字段说明：按 PRD 字段清单（scripts/prd_fields.json）逐表逐字段列出；PRD 无字段清单的需求以业务摘要兜底 */
+    {
+      const frs = arr(n.fr);
+      const dom = frs.some(f => /^QFR/.test(f)) ? 'D_qt' : 'D_lx';
+      const frKey = (frs[0] || '').replace('QFR-', 'FR-');
+      const tbls = ((window.PRD_FIELDS || {})[dom] || {})[frKey] || [];
+      /* 按表头动态定位列角色: 类型/必填/说明；素表（无表头）按 [名,类型,说明] 或 [名,说明] 处理 */
+      const colOf = (hdr, keys) => (hdr || []).findIndex(h => keys.some(k => (h || '').replace(/\//g, '').replace(/\s/g, '').includes(k)));
+      if (tbls.length) {
+        root.append(el('h3', '', '字段说明'));
+        tbls.forEach(t => {
+          if (!t.rows.length) return;
+          root.append(el('h4', 'field-tbl-title', t.title));
+          const hdr = (t.header || []).map(h => (h || '').trim());
+          const hasHdr = hdr.some(Boolean);
+          const iType = hasHdr ? colOf(hdr, ['类型', '题型', '约束']) : (t.rows[0] || []).length > 2 ? 1 : -1;
+          const iReq = hasHdr ? colOf(hdr, ['必填']) : -1;
+          const iDesc = hasHdr ? colOf(hdr, ['说明', '描述', '内容与口径', '档位与区间', '达成方式', '判定数据来源', '配置参数', '题干', '界面预置细化标准']) : (t.rows[0] || []).length > 2 ? 2 : 1;
+          const iGroup = hasHdr ? colOf(hdr, ['子页签', '区块', '题号']) : -1; /* 分组列（子页签/区块/题号）并入说明末尾 */
+          const iName = hasHdr ? Math.max(colOf(hdr, ['字段名', '列名', '字段', '要素', '条件项', '项目']), 0) : 0;
+          t.rows.forEach(row => {
+            const group = iGroup >= 0 ? (row[iGroup] || '').trim() : '';
+            const name = (row[iName] || '').trim(); if (!name) return;
+            const line = el('div', 'field-line');
+            line.append(el('span', 'field-name', name));
+            const spec = el('span', 'field-spec');
+            const tags = [];
+            const tv = iType >= 0 ? (row[iType] || '').trim() : ''; if (tv && tv !== '—') tags.push(tv);
+            if (iReq >= 0) { const r = (row[iReq] || '').trim(); if (r === '是') tags.push('必填'); else if (r === '否') tags.push('选填'); else if (r && r !== '—') tags.push(r) }
+            if (tags.length) spec.append(el('span', 'field-type', tags.join(' · ')));
+            const dv = iDesc >= 0 ? (row[iDesc] || '').trim() : '';
+            if (dv && dv !== '—') spec.append(el('span', 'field-desc', dv + (group && group !== name ? `（${group}）` : '')));
+            line.append(spec);
+            root.append(line);
+          });
+        });
+      } else if (n.summary) {
+        root.append(el('h3', '', '字段说明')); root.append(el('p', '', n.summary));
+      }
+    }
     root.append(el('h3', '', '服务场景')); arr(n.scenarios).forEach(s => rel(root, s));
     if (mode === 'product') {
       addSection(root, '需求编号', arr(n.fr).length ? arr(n.fr) : '待对应（在 data.js 的 fr 字段补充）');
       addSection(root, '优先级', n.priority || '待排期'); addSection(root, '交付状态', n.status || '—');
     }
-    const ds = uniq(arr(n.scenarios).map(s => scenById(s)?.domain)).filter(Boolean).map(d => domainById(d)).filter(Boolean);
-    const fs = flows.filter(f => ds.some(d => d.id === f.domain));
-    if (fs.length) { root.append(el('h3', '', '所属主线')); fs.forEach(f => rel(root, f.id)) }
   }
   if (flows.some(f => f.id === n.id) && !step && !outcome) {
     addSection(root, '流程概览', n.note);
