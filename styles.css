@@ -13,7 +13,7 @@
 
 /* ===== 流程图扩展（业务图谱新增，配色对齐 workbench 风格） ===== */
 .graph-edge.flowback{stroke-dasharray:5 4;stroke:#b52b12}
-.edge-label{font-size:15px;fill:#171717;font-weight:600;paint-order:stroke;stroke:#f8f8f5;stroke-width:3.5px;pointer-events:none}
+.edge-label{font-size:11px;fill:#171717;font-weight:600;paint-order:stroke;stroke:#f8f8f5;stroke-width:3.5px;pointer-events:none}
 .legend i{background:#71716a}
 .legend .cyan{background:#171717}
 .legend .dashed{border-top:1px dashed #b52b12;background:none}
