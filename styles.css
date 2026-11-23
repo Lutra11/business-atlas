@@ -19,25 +19,31 @@
 .legend .dashed{border-top:1px dashed #b52b12;background:none}
 
 /* ===== 业务角色轮播（总览页·左右切换，不做纵向滚动） ===== */
-.role-carousel{display:flex;align-items:center;justify-content:space-between;padding:22px 0 6px;border-bottom:1px solid var(--line)}
+.role-carousel{padding:22px 0 6px;border-bottom:1px solid var(--line)}
 .carousel-title{display:flex;align-items:baseline;gap:14px}
 .carousel-eyebrow{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--accent)}
 .carousel-title h2{font-size:24px;font-weight:800;margin:0;letter-spacing:.5px}
 .carousel-count{font-size:14px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
-.carousel-nav{display:flex;gap:10px}
-.carousel-btn{width:44px;height:44px;border:2px solid var(--ink);background:#f4f4f1;font-size:22px;font-weight:800;line-height:1;color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s}
+.carousel-view{display:flex;align-items:stretch;gap:16px}
+.carousel-btn{flex:0 0 48px;align-self:center;width:48px;height:48px;border:2px solid var(--ink);background:#f4f4f1;font-size:24px;font-weight:800;line-height:1;color:var(--ink);cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s}
 .carousel-btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);color:var(--accent)}
 .carousel-btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
-.carousel-track{display:flex;gap:18px;padding:20px 0 4px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none}
-.carousel-track::-webkit-scrollbar{display:none}
-.carousel-slide{flex:0 0 100%;display:grid;grid-template-columns:56px 1fr 1fr;grid-template-rows:auto auto;gap:10px 22px;align-items:start;border:2px solid var(--ink);background:#f4f4f1;box-shadow:4px 4px 0 var(--ink);padding:24px 26px;scroll-snap-align:start}
-.carousel-number{font-size:32px;font-weight:800;line-height:1;padding-top:4px;grid-row:span 2}
-.carousel-slide .domain-title{font-size:19px;font-weight:800;margin-bottom:4px}
-.carousel-duty{display:grid;gap:6px}
+.carousel-track{display:flex;flex:1;min-width:0;overflow:hidden}
+.carousel-slide{display:none}
+.carousel-slide.active{display:block}
+.carousel-slide{flex:0 0 100%;border:2px solid var(--ink);background:#f4f4f1;box-shadow:4px 4px 0 var(--ink);padding:26px 30px}
+.role-row{display:grid;grid-template-columns:minmax(96px,150px) 1fr;gap:0 26px;align-items:start;padding:12px 0}
+.role-row+.role-row{border-top:1px dashed #c9c9c3}
+.role-row:first-child{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+.role-row:nth-child(2){border-top:none}
+.carousel-slide .domain-title{font-size:19px;font-weight:800;margin:0}
+.carousel-slide .domain-summary{margin:4px 0 0}
+.role-label{font-size:14px;font-weight:800;letter-spacing:1px;color:var(--muted);padding-top:5px;white-space:nowrap}
+.role-value{font-size:15px;line-height:1.75;min-width:0}
+.carousel-duty{display:grid;gap:4px}
 .duty-line{margin:0;font-size:15px;line-height:1.7;color:#3d4356}
-.carousel-block h3{font-size:14px;font-weight:800;letter-spacing:1.5px;color:var(--muted);margin:0 0 8px;text-transform:uppercase}
-.carousel-block{grid-row:2}
-.carousel-slide .domain-summary{margin-top:2px}
+.carousel-scenes{display:flex;flex-wrap:wrap;gap:6px 14px}
+.carousel-scenes .scenario-item{width:auto;flex:0 1 auto;padding:3px 0;font-size:15px}
 .carousel-dots{display:flex;justify-content:center;gap:8px;padding:10px 0 16px}
 .carousel-dot{width:10px;height:10px;border:2px solid var(--ink);border-radius:50%;background:#f4f4f1;cursor:pointer;padding:0}
 .carousel-dot.active{background:var(--accent);border-color:var(--accent)}

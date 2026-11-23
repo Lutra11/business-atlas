@@ -189,33 +189,32 @@ function renderOverview() {
   const idx = Math.min(carouselIndex, Math.max(0, roleList.length - 1));
   const cwrap = el('div', 'role-carousel');
   const ctitle = el('div', 'carousel-title'); ctitle.append(el('span', 'carousel-eyebrow', '业务角色'), el('h2', '', '角色职责总览'), el('span', 'carousel-count', roleList.length ? `${idx + 1} / ${roleList.length}` : ''));
-  const cnav = el('div', 'carousel-nav');
+  cwrap.append(ctitle);
+  /* 左右切换按钮置于卡片两侧；卡片内为「列名左·内容右」清单（不显示编号） */
+  const view = el('div', 'carousel-view');
   const prevB = btn('‹', () => stepCarousel(-1), 'carousel-btn'); prevB.setAttribute('aria-label', '上一个角色');
   const nextB = btn('›', () => stepCarousel(1), 'carousel-btn'); nextB.setAttribute('aria-label', '下一个角色');
-  cnav.append(prevB, nextB);
-  cwrap.append(ctitle, cnav);
   const track = el('div', 'carousel-track');
   roleList.forEach((r, i) => {
     const slide = el('div', 'carousel-slide' + (i === idx ? ' active' : ''));
-    const num = el('div', 'carousel-number', String(i + 1).padStart(2, '0'));
-    num.style.color = ROLE_COLORS[r.id] || '';
-    const t = el('div');
-    t.append(btn(r.name, () => inspect(r.id), 'domain-title'), el('div', 'domain-summary', r.org + (r.tabs ? ' · ' + r.tabs.join(' / ') : '')));
-    const duty = el('div', 'carousel-duty');
-    r.duties.forEach(d => duty.append(el('p', 'duty-line', d)));
-    const sc = el('div', 'carousel-scenes');
+    const mkRow = (label, value) => { const rw = el('div', 'role-row'); rw.append(el('div', 'role-label', label), value); slide.append(rw) };
+    const nameVal = el('div', 'role-value'); nameVal.append(btn(r.name, () => inspect(r.id), 'domain-title'));
+    mkRow('角色名称', nameVal);
+    mkRow('所属单位', el('div', 'role-value', r.org + (r.tabs ? ' · ' + r.tabs.join(' / ') : '')));
+    const duty = el('div', 'role-value carousel-duty'); r.duties.forEach(d => duty.append(el('p', 'duty-line', d)));
+    mkRow('主要职责', duty);
+    const sc = el('div', 'role-value carousel-scenes');
     uniq(caps.filter(c => c.role === r.id).flatMap(c => c.scenarios)).filter(id => scopedScenarios().some(s => s.id === id))
       .forEach(id => sc.append(btn(scenTitle(id) + '  →', () => navigate('scenarios', id), 'scenario-item')));
     if (!sc.children.length) sc.append(el('p', 'domain-summary', '在当前业务范围下暂无参与场景。'));
-    const b1 = el('div', 'carousel-block'); b1.append(el('h3', '', '主要职责'), duty);
-    const b2 = el('div', 'carousel-block'); b2.append(el('h3', '', '参与场景'), sc);
-    slide.append(num, t, b1, b2);
+    mkRow('参与场景', sc);
     track.append(slide);
   });
+  view.append(prevB, track, nextB);
   const dots = el('div', 'carousel-dots');
   roleList.forEach((r, i) => { const d = btn('', () => { carouselIndex = i; render() }, 'carousel-dot' + (i === idx ? ' active' : '')); d.setAttribute('aria-label', `角色 ${i + 1}`); dots.append(d) });
   if (!roleList.length) track.append(el('div', 'empty-state', '当前业务范围暂无角色。'));
-  p.append(cwrap, track, dots);
+  p.append(cwrap, view, dots);
   function stepCarousel(dir) { const n = roleList.length; if (!n) return; carouselIndex = (idx + dir + n) % n; render() }
   requestAnimationFrame(() => { /* 切换后自动滚到 active 卡片，避免横滑错位 */
     const act = track.querySelector('.carousel-slide.active'); if (act) act.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
