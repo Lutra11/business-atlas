@@ -18,7 +18,7 @@
 .legend .cyan{background:#171717}
 .legend .dashed{border-top:1px dashed #b52b12;background:none}
 
-/* ===== 业务角色轮播（总览页·左右切换，不做纵向滚动） ===== */
+/* /* ===== 业务角色轮播（总览页·左右切换；卡片内逐行 字段名左·内容右） ===== */
 .role-carousel{padding:22px 0 6px;border-bottom:1px solid var(--line)}
 .carousel-title{display:flex;align-items:baseline;gap:14px}
 .carousel-eyebrow{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--accent)}
@@ -31,14 +31,12 @@
 .carousel-track{display:flex;flex:1;min-width:0;overflow:hidden}
 .carousel-slide{display:none}
 .carousel-slide.active{display:block}
-.carousel-slide{flex:0 0 100%;border:2px solid var(--ink);background:#f4f4f1;box-shadow:4px 4px 0 var(--ink);padding:26px 30px}
-.role-row{display:grid;grid-template-columns:minmax(96px,150px) 1fr;gap:0 26px;align-items:start;padding:12px 0}
+.carousel-slide{flex:0 0 100%;border:2px solid var(--ink);background:#f4f4f1;box-shadow:4px 4px 0 var(--ink);padding:22px 28px}
+.role-row{display:grid;grid-template-columns:max-content 1fr;gap:0 24px;align-items:start;padding:11px 0}
 .role-row+.role-row{border-top:1px dashed #c9c9c3}
-.role-row:first-child{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
-.role-row:nth-child(2){border-top:none}
-.carousel-slide .domain-title{font-size:19px;font-weight:800;margin:0}
+.carousel-slide .domain-title{font-size:16px;font-weight:700;margin:0;padding:0}
 .carousel-slide .domain-summary{margin:4px 0 0}
-.role-label{font-size:14px;font-weight:800;letter-spacing:1px;color:var(--muted);padding-top:5px;white-space:nowrap}
+.role-label{font-size:14px;font-weight:700;letter-spacing:1px;color:var(--muted);padding-top:3px;white-space:nowrap}
 .role-value{font-size:15px;line-height:1.75;min-width:0}
 .carousel-duty{display:grid;gap:4px}
 .duty-line{margin:0;font-size:15px;line-height:1.7;color:#3d4356}
