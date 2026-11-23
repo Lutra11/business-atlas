@@ -108,32 +108,41 @@ function renderFieldSpec(root, frs, fallback, secTitle = '字段清单') {
   if (!tbls.length) { if (fallback) { root.append(el('h3', '', secTitle)); root.append(el('p', 'field-empty', fallback)) } return; }
   const colOf = (hdr, keys) => (hdr || []).findIndex(h => keys.some(k => (h || '').replace(/\//g, '').replace(/\s/g, '').includes(k)));
   root.append(el('h3', '', secTitle));
+  const grid = el('div', 'field-grid');
+  const head = el('div', 'field-head');
+  head.append(el('span', 'fh-name', '字段名称'));
+  head.append(el('span', 'fh-type', '字段类型'));
+  head.append(el('span', 'fh-desc', '字段说明'));
+  grid.append(head);
   tbls.forEach(t => {
     if (!t.rows.length) return;
-    root.append(el('h4', 'field-tbl-title', t.title));
     const hdr = (t.header || []).map(h => (h || '').trim());
     const hasHdr = hdr.some(Boolean);
     const iType = hasHdr ? colOf(hdr, ['类型', '题型', '约束']) : (t.rows[0] || []).length > 2 ? 1 : -1;
     const iReq = hasHdr ? colOf(hdr, ['必填']) : -1;
-    const iDesc = hasHdr ? colOf(hdr, ['说明', '描述', '内容与口径', '档位与区间', '达成方式', '判定数据来源', '配置参数', '题干', '界面预置细化标准']) : (t.rows[0] || []).length > 2 ? 2 : 1;
+    const iDesc = hasHdr ? colOf(hdr, ['说明', '描述', '人机交互', '内容与口径', '档位与区间', '达成方式', '判定数据来源', '配置参数', '题干', '界面预置细化标准']) : (t.rows[0] || []).length > 2 ? 2 : 1;
     const iGroup = hasHdr ? colOf(hdr, ['子页签', '区块', '题号']) : -1;
     const iName = hasHdr ? Math.max(colOf(hdr, ['字段名', '列名', '字段', '要素', '条件项', '项目']), 0) : 0;
     t.rows.forEach(row => {
       const group = iGroup >= 0 ? (row[iGroup] || '').trim() : '';
       const name = (row[iName] || '').trim(); if (!name) return;
+      const tv = iType >= 0 ? (row[iType] || '').trim() : '';
+      const r = iReq >= 0 ? (row[iReq] || '').trim() : '';
+      let type = tv && tv !== '—' ? tv : '';
+      if (!type && r === '是') type = '必填';
+      else if (type && r === '是') type = type + '（必填）';
+      else if (type && r === '否') type = type + '（选填）';
+      const dv = iDesc >= 0 ? (row[iDesc] || '').trim() : '';
+      const desc = dv && dv !== '—' ? dv : '';
+      const g = group && group !== name ? group : '';
       const line = el('div', 'field-line');
       line.append(el('span', 'field-name', name));
-      const spec = el('span', 'field-spec');
-      const tags = [];
-      const tv = iType >= 0 ? (row[iType] || '').trim() : ''; if (tv && tv !== '—') tags.push(tv);
-      if (iReq >= 0) { const r = (row[iReq] || '').trim(); if (r === '是') tags.push('必填'); else if (r === '否') tags.push('选填'); else if (r && r !== '—') tags.push(r) }
-      if (tags.length) spec.append(el('span', 'field-type', tags.join(' · ')));
-      const dv = iDesc >= 0 ? (row[iDesc] || '').trim() : '';
-      if (dv && dv !== '—') spec.append(el('span', 'field-desc', dv + (group && group !== name ? `（${group}）` : '')));
-      line.append(spec);
-      root.append(line);
+      line.append(el('span', 'field-type', type || '—'));
+      line.append(el('span', 'field-desc', (desc || (g ? g : '—')) + (g && desc ? `（${g}）` : '')));
+      grid.append(line);
     });
   });
+  root.append(grid);
 }
 function inspect(id, custom) {
   selected = id; const n = custom || byId.get(id); if (!n) return;

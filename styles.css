@@ -47,11 +47,14 @@
 .carousel-dot.active{background:var(--accent);border-color:var(--accent)}
 
 /* ===== 能力详情·字段说明（PRD 字段清单） ===== */
-#inspector .field-tbl-title{margin:14px 0 6px;font-size:17px;font-weight:700;color:#171717;border-left:3px solid #e63312;padding-left:8px}
-#inspector .field-line{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);align-items:baseline}
-#inspector .field-name{flex:0 0 auto;max-width:150px;font-weight:600;color:#171717;font-size:15px}
-#inspector .field-spec{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-#inspector .field-type{display:inline-block;align-self:flex-start;font-size:12px;color:#5d6070;border:1px solid #d8d8d0;padding:0 6px;border-radius:2px;background:#f4f4f1}
-#inspector .field-desc{font-size:15px;color:#3d4356;line-height:1.5}
 
 #inspector .field-empty{margin:6px 0 0;padding:8px 10px;font-size:14px;color:#5d6070;background:#f4f4f1;border:1px dashed #d8d8d0}
+
+#inspector .field-grid{margin:10px 0 0;border:1px solid var(--line)}
+#inspector .field-head,#inspector .field-line{display:grid;grid-template-columns:130px 110px 1fr;gap:0 12px;align-items:baseline;padding:6px 10px}
+#inspector .field-head{background:#f4f4f1;font-weight:700;font-size:14px;color:#171717;border-bottom:1px solid var(--line)}
+#inspector .field-line{border-bottom:1px dashed var(--line);font-size:14px}
+#inspector .field-line:last-child{border-bottom:none}
+#inspector .field-name{font-weight:600;color:#171717}
+#inspector .field-type{color:#5d6070;font-size:13px}
+#inspector .field-desc{color:#3d4356;line-height:1.5}
