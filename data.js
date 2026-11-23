@@ -1061,3 +1061,12 @@ window.BIZ = {
    *    edges[].kind ∈ {main, auto, related, return}。
    */
 };
+
+/* ---- 数据自洽: 由场景 capabilities 反推能力->场景回引(供能力复用矩阵圆点) ---- */
+(function(){
+  var B = window.BIZ;
+  B.scenarios.forEach(function(s){ (s.capabilities||[]).forEach(function(cid){
+    var c = B.capabilities.find(function(x){return x.id===cid});
+    if (c) { if(!Array.isArray(c.scenarios)) c.scenarios=[]; if(c.scenarios.indexOf(s.id)<0) c.scenarios.push(s.id); }
+  }); });
+})();
