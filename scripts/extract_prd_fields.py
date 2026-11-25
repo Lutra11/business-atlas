@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-# 从两份 PRD 提取每 FR 的字段清单 -> scripts/prd_fields.json
-# 结构: {D_lx: {FR-01: [{title, header, rows:[...]}...]}, D_qt: {...}}
+# 从《科研项目管理PRD》提取每 FR 的字段清单 -> scripts/prd_fields.json
+# 结构: {D_lx: {FR-01: [{title, header, rows:[...]}...]}}
 import re, json, sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-BASE = r'C:/Users/Admin/Desktop/业务流程'
-FILES = {'D_lx': BASE + r'/科研项目管理PRD.md', 'D_qt': BASE + r'/季度推进会PRD.md'}
+BASE = r'C:/Users/87193/zgci-system-show'
+FILES = {'D_lx': BASE + r'/科研项目管理PRD.md'}
 
 TBL = re.compile(r'^表[\s\xa0]*\d+[（(]?[a-z]?[）)]?(?:[（(][a-z][）)])?\s*(.*)$')
 SEP = re.compile(r'^\|[\s\-:|]+\|$')
